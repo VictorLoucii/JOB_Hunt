@@ -6,21 +6,23 @@
 # ============================================================
 
 user:
-  name: "Your Name"
-  university: "Your University"
-  major: "Computer Science"
-  graduation: "2027"
+  name: "Victor Neisakuolie"
+  university: "Hansraj College, University of Delhi"
+  major: "B.Sc. Computer Science"
+  graduation: "2026"
   skills:
     - "Python"
-    - "Machine Learning"
-    - "LLMs"
-    - "RAG"
-  linkedin: "https://linkedin.com/in/your-profile"
-  portfolio: ""  # Optional: your portfolio URL
+    - "TypeScript"
+    - "FastAPI"
+    - "React Native"
+    - "Agentic RAG"
+    - "LangGraph"
+  linkedin: "https://www.linkedin.com/in/victor-loucii-48351a292/"
+  portfolio: "https://victor-neisa-portfolio.netlify.app/"  # Optional: your portfolio URL
 
 # Resume configuration
 resume:
-  dir: "~/Documents/resumes/"  # Directory containing your resume PDF(s)
+  dir: "/Users/victorloucii/Desktop/AI_CV"  # Directory containing your resume PDF(s)
   # The server will automatically pick the most recently modified .pdf file
 
 # LLM configuration
@@ -37,4 +39,6 @@ targets:
     - "Delhi NCR"
     - "Gurgaon"
     - "Noida"
-  type: "paid"  # paid internships only
+  # Rule: Target any post with an email, even if "paid" isn't explicitly mentioned.
+  # EXCEPTION: Ignore posts mentioning "performance based stipend" (usually unpaid).
+  type: "paid or unspecified (no performance-based stipend)"

@@ -43,6 +43,9 @@ data/*.sqlite
 data/*.sqlite3
 !data/.gitkeep
 
+# Agents
+.agents/
+
 # ---- Scratch Scripts (experiments, not committed) ----
 scratch/*
 !scratch/.gitkeep
