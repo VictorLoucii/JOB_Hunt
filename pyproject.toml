@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobhunt"
+version = "0.1.0"
+description = "HITL LinkedIn Email Drafter — Draft personalized internship emails from LinkedIn posts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    # ---- Web Framework ----
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+
+    # ---- LLM ----
+    "httpx>=0.27.0",              # Async HTTP client for OpenRouter
+    "pydantic>=2.7.0",            # Data validation & structured output
+    "pydantic-settings>=2.3.0",   # BaseSettings for env + config loading
+
+    # ---- Gmail API ----
+    "google-auth-oauthlib>=1.2.0",
+    "google-api-python-client>=2.130.0",
+
+    # ---- Config ----
+    "pyyaml>=6.0",                # YAML config parsing
+
+    # ---- Terminal UI ----
+    "rich>=13.7.0",               # Rich terminal output for HITL review
+
+    # ---- Database ----
+    # sqlite3 is built into Python stdlib — no extra dependency needed
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+]
+
+[project.scripts]
+jobhunt = "server.main:start"
+
+[tool.setuptools.packages.find]
+include = ["server*"]
+
+# ---- Ruff (Linter + Formatter) ----
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+]
+
+# ---- Pytest ----
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+# ---- Mypy ----
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]

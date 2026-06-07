@@ -1,0 +1,40 @@
+# ============================================================
+# JobHunt — User Configuration
+# ============================================================
+# This file contains your profile and preferences.
+# Secrets (API keys, OAuth tokens) belong in .env, NOT here.
+# ============================================================
+
+user:
+  name: "Your Name"
+  university: "Your University"
+  major: "Computer Science"
+  graduation: "2027"
+  skills:
+    - "Python"
+    - "Machine Learning"
+    - "LLMs"
+    - "RAG"
+  linkedin: "https://linkedin.com/in/your-profile"
+  portfolio: ""  # Optional: your portfolio URL
+
+# Resume configuration
+resume:
+  dir: "~/Documents/resumes/"  # Directory containing your resume PDF(s)
+  # The server will automatically pick the most recently modified .pdf file
+
+# LLM configuration
+llm:
+  model: "deepseek/deepseek-chat"  # Model ID on OpenRouter
+  temperature: 0.7
+  max_tokens: 1024
+
+# Target filters (for reference — filtering is manual via LinkedIn search)
+targets:
+  locations:
+    - "Bangalore"
+    - "Delhi"
+    - "Delhi NCR"
+    - "Gurgaon"
+    - "Noida"
+  type: "paid"  # paid internships only

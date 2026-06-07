@@ -1,0 +1,63 @@
+# ============================================================
+# JobHunt — .gitignore
+# ============================================================
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+.eggs/
+
+# ---- Virtual Environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---- Environment & Secrets ----
+.env
+!.env.example
+
+# ---- Gmail OAuth Credentials ----
+credentials/*.json
+!credentials/.gitkeep
+
+# ---- Runtime Data ----
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+!data/.gitkeep
+
+# ---- Scratch Scripts (experiments, not committed) ----
+scratch/*
+!scratch/.gitkeep
+
+# ---- Test / Coverage ----
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Distribution / Build ----
+*.tar.gz
+*.zip

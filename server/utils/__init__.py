@@ -1,0 +1,1 @@
+"""JobHunt — Shared Utilities Package."""

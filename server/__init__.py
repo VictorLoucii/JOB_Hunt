@@ -1,0 +1,1 @@
+"""JobHunt — FastAPI Server Package."""

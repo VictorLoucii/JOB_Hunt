@@ -1,0 +1,2 @@
+# This file keeps the scratch/ directory in git.
+# Scratch scripts (experiments, API tests) are gitignored.
