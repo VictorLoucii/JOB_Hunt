@@ -25,9 +25,15 @@ def find_latest_resume(resume_dir: Path) -> Path | None:
     if not resume_dir.exists():
         logger.warning("Resume directory does not exist: %s", resume_dir)
         return None
+        
+    try:
+        all_files = list(resume_dir.iterdir())
+        logger.info("Debug: All files in %s: %s", resume_dir, all_files)
+    except Exception as e:
+        logger.error("Debug: Failed to list directory %s: %s", resume_dir, e)
 
     pdfs = sorted(
-        resume_dir.glob("*.pdf"),
+        [p for p in resume_dir.iterdir() if p.is_file() and p.suffix.lower() == ".pdf"],
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )

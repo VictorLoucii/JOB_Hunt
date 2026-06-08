@@ -17,7 +17,6 @@ from server.services.email_extractor import (
     extract_email,
 )
 
-
 # ──────────────────────────────────────────────
 # Regex extraction — standard patterns
 # ──────────────────────────────────────────────

@@ -86,12 +86,21 @@
         }, TOAST_DURATION_MS);
     }
 
-    function sendToServer(selectedText, pageUrl) {
+    async function computeHash(text) {
+        const msgUint8 = new TextEncoder().encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+    }
+
+    function sendToServer(selectedText, pageUrl, contentHash) {
         showToast("Sending to JobHunt...", "info");
         
         const payload = {
             selected_text: selectedText,
             page_url: pageUrl,
+            content_hash: contentHash,
             timestamp: new Date().toISOString()
         };
 
@@ -137,7 +146,7 @@
     let isProcessing = false;
 
     // Keyboard listener for Cmd+Shift+X / Ctrl+Shift+X
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', async function(e) {
         // 'X' is keyCode 88, or use e.code === 'KeyX'
         if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyX') {
             e.preventDefault(); // Prevent any default browser action
@@ -153,9 +162,10 @@
             }
 
             const pageUrl = window.location.href;
+            const contentHash = await computeHash(selectedText);
             
             isProcessing = true;
-            sendToServer(selectedText, pageUrl);
+            sendToServer(selectedText, pageUrl, contentHash);
             
             // Release lock after 2 seconds (debounce)
             setTimeout(() => {

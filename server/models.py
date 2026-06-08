@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -22,6 +23,7 @@ class WebhookPayload(BaseModel):
 
     selected_text: str = Field(..., description="Text the user highlighted on LinkedIn")
     page_url: str = Field(..., description="LinkedIn post URL")
+    content_hash: str = Field(..., description="SHA-256 hash of the selected text")
     timestamp: str = Field(
         default_factory=lambda: datetime.now(UTC).isoformat(),
         description="ISO 8601 timestamp from the browser",
@@ -77,19 +79,24 @@ class EmailDraft(BaseModel):
     subject: str = Field(..., description="Email subject line")
     body: str = Field(..., description="Full email body text")
 
-    @field_validator("to_email")
+    @field_validator("to_email", mode="before")
     @classmethod
-    def validate_to_email(cls, v: str) -> str:
-        """Ensure to_email is a valid email format, or empty/placeholder."""
-        v_stripped = v.strip()
-        # Allow empty strings or placeholders (e.g. "[Recipient Email]") since the webhook
-        # overrides this with the actual extracted/manual email anyway.
-        if not v_stripped or v_stripped.startswith("["):
-            return v_stripped
+    def validate_to_email(cls, v: Any) -> str:
+        """Ensure to_email is a string. The webhook overrides this anyway."""
+        if v is None:
+            return ""
+        if not isinstance(v, str):
+            v = str(v)
             
-        if not EMAIL_REGEX.match(v):
-            raise ValueError(f"Invalid email format: {v}")
-        return v
+        v_stripped = v.strip()
+        # Just return the string. If it's totally invalid, the webhook overrides it
+        # with the extracted/manual email before sending to Gmail.
+        if not v_stripped or v_stripped.startswith("[") or EMAIL_REGEX.match(v_stripped):
+            return v_stripped
+        
+        # If the LLM hallucinated some random text (like "extracted email from post"),
+        # just return an empty string to avoid crashing.
+        return ""
 
     @field_validator("subject")
     @classmethod
@@ -114,6 +121,7 @@ class DraftResult(BaseModel):
     draft: EmailDraft = Field(..., description="The generated email draft")
     post_text: str = Field(..., description="Original LinkedIn post text")
     page_url: str = Field(..., description="Original LinkedIn post URL")
+    content_hash: str = Field(..., description="SHA-256 hash of the selected text")
     resume_path: str | None = Field(
         default=None, description="Path to attached resume, or None"
     )

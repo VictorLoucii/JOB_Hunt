@@ -56,3 +56,16 @@ def sample_post_with_obfuscated_email() -> str:
         "Interested? Drop your resume at john [at] acme [dot] com\n"
         "or DM me."
     )
+
+
+@pytest.fixture
+def mock_user_profile() -> MagicMock:
+    """
+    Create a mock UserProfile object for tests.
+    """
+    profile = MagicMock()
+    profile.llm_model = "deepseek/deepseek-chat"
+    profile.llm_temperature = 0.7
+    profile.llm_max_tokens = 1024
+    profile.to_prompt_context.return_value = "Name: Test User\nSkills: Python"
+    return profile

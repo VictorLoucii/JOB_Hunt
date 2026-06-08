@@ -132,6 +132,10 @@ class UserProfile:
         return self._data.get("user", {}).get("portfolio", "")
 
     @property
+    def project_link(self) -> str:
+        return self._data.get("user", {}).get("project_link", "")
+
+    @property
     def llm_model(self) -> str:
         return self._data.get("llm", {}).get("model", "deepseek/deepseek-chat")
 
@@ -158,7 +162,8 @@ class UserProfile:
             f"Expected Graduation: {self.graduation}\n"
             f"Skills: {skills_str}\n"
             f"LinkedIn: {self.linkedin}\n"
-            f"Portfolio: {self.portfolio}"
+            f"Portfolio: {self.portfolio}\n"
+            f"Project Link: {self.project_link}"
         )
 
 

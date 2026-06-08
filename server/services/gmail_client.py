@@ -167,8 +167,9 @@ class GmailClient:
 
     @staticmethod
     def _build_plain_message(draft: EmailDraft) -> str:
-        """Build a plain text MIME message and return base64url-encoded raw string."""
-        message = MIMEText(draft.body, "plain")
+        """Build an HTML MIME message and return base64url-encoded raw string."""
+        html_body = draft.body.replace("\n", "<br>")
+        message = MIMEText(html_body, "html")
         message["to"] = draft.to_email
         message["subject"] = draft.subject
         return base64.urlsafe_b64encode(message.as_bytes()).decode()
@@ -185,7 +186,9 @@ class GmailClient:
         message = MIMEMultipart()
         message["to"] = draft.to_email
         message["subject"] = draft.subject
-        message.attach(MIMEText(draft.body, "plain"))
+        
+        html_body = draft.body.replace("\n", "<br>")
+        message.attach(MIMEText(html_body, "html"))
 
         # Attach the resume PDF.
         with open(resume_path, "rb") as f:

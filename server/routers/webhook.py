@@ -45,8 +45,8 @@ async def handle_webhook(
     5. Save to database and Gmail.
     """
     # 1. Deduplication Check
-    if db.is_duplicate(page_url=payload.page_url):
-        logger.info("Skipping duplicate post: %s", payload.page_url)
+    if db.is_duplicate(content_hash=payload.content_hash):
+        logger.info("Skipping duplicate post (hash match)")
         return {"status": "skipped", "reason": "duplicate_post"}
 
     # 2. Email Extraction
@@ -83,6 +83,7 @@ async def handle_webhook(
         draft=draft,
         post_text=payload.selected_text,
         page_url=payload.page_url,
+        content_hash=payload.content_hash,
         resume_path=resume_path_str,
         extracted_email=extracted_email,
     )
@@ -107,6 +108,7 @@ async def handle_webhook(
                     author_email=draft_result.draft.to_email,
                     subject=draft_result.draft.subject,
                     status=DraftStatus.APPROVED,
+                    content_hash=draft_result.content_hash,
                 )
                 return {"status": "approved"}
             except Exception as e:
@@ -121,6 +123,7 @@ async def handle_webhook(
                 author_email=draft_result.draft.to_email,
                 subject=draft_result.draft.subject,
                 status=DraftStatus.SKIPPED,
+                content_hash=draft_result.content_hash,
             )
             return {"status": "skipped", "reason": "user_skipped"}
 

@@ -84,7 +84,10 @@ def present_hitl_review(result: DraftResult) -> str:
     draft_content.append(f"{result.draft.to_email}\n")
     draft_content.append("Subject: ", style="bold green")
     draft_content.append(f"{result.draft.subject}\n\n")
-    draft_content.append(result.draft.body)
+    
+    # Strip HTML tags for clean terminal viewing
+    clean_body = result.draft.body.replace("<b>", "").replace("</b>", "")
+    draft_content.append(clean_body)
 
     console.print(
         Panel(

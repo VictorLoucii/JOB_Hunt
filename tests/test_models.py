@@ -7,7 +7,7 @@ for all models in the pipeline.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -20,7 +20,6 @@ from server.models import (
     ExtractedEmail,
     WebhookPayload,
 )
-
 
 # ──────────────────────────────────────────────
 # WebhookPayload
@@ -152,13 +151,25 @@ class TestEmailDraft:
         assert draft.to_email == "hire@company.com"
 
     def test_invalid_to_email_rejected(self) -> None:
-        """Invalid to_email should fail."""
+        """Invalid to_email (non-empty, non-placeholder, bad format) should fail."""
         with pytest.raises(ValidationError, match="Invalid email format"):
             EmailDraft(
                 to_email="not-valid",
                 subject="Test",
                 body="Test body",
             )
+
+    def test_empty_to_email_allowed(self) -> None:
+        """Empty to_email is allowed (webhook overrides it later)."""
+        draft = EmailDraft(to_email="", subject="Test", body="Test body")
+        assert draft.to_email == ""
+
+    def test_placeholder_to_email_allowed(self) -> None:
+        """Placeholder to_email like '[Recipient Email]' is allowed."""
+        draft = EmailDraft(
+            to_email="[Recipient Email]", subject="Test", body="Test body"
+        )
+        assert draft.to_email == "[Recipient Email]"
 
     def test_empty_subject_rejected(self) -> None:
         """Empty subject should fail."""
@@ -245,7 +256,7 @@ class TestDBRecord:
 
     def test_valid_record(self) -> None:
         """Full valid DBRecord should pass."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         record = DBRecord(
             id=1,
             page_url="https://www.linkedin.com/posts/1",
@@ -259,7 +270,7 @@ class TestDBRecord:
 
     def test_record_without_id(self) -> None:
         """DBRecord without id (before insert) should default to None."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         record = DBRecord(
             page_url="https://www.linkedin.com/posts/1",
             author_email="hire@co.com",

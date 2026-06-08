@@ -19,6 +19,7 @@ user:
     - "LangGraph"
   linkedin: "https://www.linkedin.com/in/victor-loucii-48351a292/"
   portfolio: "https://victor-neisa-portfolio.netlify.app/"  # Optional: your portfolio URL
+  project_link: "https://github.com/VictorLoucii/unified-knowledge-agent"
 
 # Resume configuration
 resume:

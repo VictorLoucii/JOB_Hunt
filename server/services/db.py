@@ -29,13 +29,15 @@ CREATE TABLE IF NOT EXISTS drafts (
     subject     TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'drafted',
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT
+    updated_at  TEXT,
+    content_hash TEXT
 );
 """
 
 _CREATE_INDEXES_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_page_url ON drafts(page_url);",
     "CREATE INDEX IF NOT EXISTS idx_author_email ON drafts(author_email);",
+    "CREATE INDEX IF NOT EXISTS idx_content_hash ON drafts(content_hash);",
 ]
 
 
@@ -66,34 +68,42 @@ class Database:
         """Create tables and indexes if they don't exist."""
         with self._conn:
             self._conn.execute(_CREATE_TABLE_SQL)
+            
+            # Migration: Add content_hash if it doesn't exist (for existing DBs)
+            try:
+                self._conn.execute("ALTER TABLE drafts ADD COLUMN content_hash TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+                
             for index_sql in _CREATE_INDEXES_SQL:
                 self._conn.execute(index_sql)
 
     def is_duplicate(
-        self, page_url: str | None = None, author_email: str | None = None
+        self, content_hash: str | None = None, author_email: str | None = None, page_url: str | None = None
     ) -> bool:
         """
         Check if we've already processed this post or emailed this person.
 
         Returns True if either:
-          - A record with this page_url exists (any status)
+          - A record with this content_hash exists (any status)
           - A record with this author_email exists with status 'approved'
 
         Args:
-            page_url: The LinkedIn post URL to check.
+            content_hash: The content hash of the selected text to check.
             author_email: The recipient email to check.
+            page_url: The LinkedIn post URL (kept for backward compatibility, but not used for blocking).
 
         Returns:
             True if this is a duplicate, False otherwise.
         """
-        # Check 1: Same post URL (any status — even "skipped" means we saw it).
-        if page_url:
+        # Check 1: Same content hash (any status — even "skipped" means we saw it).
+        if content_hash:
             cursor = self._conn.execute(
-                "SELECT 1 FROM drafts WHERE page_url = ? LIMIT 1",
-                (page_url,),
+                "SELECT 1 FROM drafts WHERE content_hash = ? LIMIT 1",
+                (content_hash,),
             )
             if cursor.fetchone():
-                logger.info("Duplicate detected — same post URL: %s", page_url)
+                logger.info("Duplicate detected — same content hash.")
                 return True
 
         # Check 2: Same email, but only if we already approved/sent to them.
@@ -114,6 +124,7 @@ class Database:
         author_email: str,
         subject: str,
         status: DraftStatus,
+        content_hash: str | None = None,
     ) -> int:
         """
         Insert a new tracking record.
@@ -130,9 +141,9 @@ class Database:
         now = datetime.now(UTC).isoformat()
         with self._conn:
             cursor = self._conn.execute(
-                "INSERT INTO drafts (page_url, author_email, subject, status, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (page_url, author_email, subject, status.value, now),
+                "INSERT INTO drafts (page_url, author_email, subject, status, created_at, content_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (page_url, author_email, subject, status.value, now, content_hash),
             )
             row_id = cursor.lastrowid
             logger.info(

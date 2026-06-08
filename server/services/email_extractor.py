@@ -30,13 +30,6 @@ _OBFUSCATION_MAP: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\s+dot\s+", re.IGNORECASE), "."),
 ]
 
-# Prompt for the lightweight LLM email extraction call.
-EMAIL_EXTRACTION_PROMPT = """Extract the email address from this text.
-Return ONLY the email address, nothing else.
-If no email is found, return "NONE".
-
-Text: {text}"""
-
 
 def _normalize_obfuscated(text: str) -> str:
     """

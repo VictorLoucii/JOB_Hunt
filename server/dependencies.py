@@ -6,8 +6,9 @@ Provides singletons for routers to inject from app.state.
 
 from __future__ import annotations
 
-from fastapi import Request
 from typing import cast
+
+from fastapi import Request
 
 from server.config import Settings
 from server.services.db import Database
