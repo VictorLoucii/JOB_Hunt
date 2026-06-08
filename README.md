@@ -15,6 +15,14 @@ LinkedIn Post → Select Text → Cmd+Shift+X → Local Server → DeepSeek LLM 
 5. **Review in terminal** — approve, edit, regenerate, or skip
 6. **Gmail draft created** with your resume attached — just hit send
 
+## Features
+
+- **Zero-Risk Extraction:** Uses native `window.getSelection()` and a keyboard shortcut instead of DOM injection, ensuring zero ban risk on LinkedIn.
+- **Robust Email Extraction:** Two-stage pipeline uses regex for standard emails and LLM fallback for obfuscated emails (e.g., `user [at] company [dot] com`), with manual entry if none is found.
+- **Smart Deduplication:** Local SQLite database tracks processed posts and emailed authors to prevent duplicate outreach.
+- **Rich Terminal Review (HITL):** Interactive UI to [A]pprove, [E]dit, [R]egenerate, or [S]kip generated drafts before they reach Gmail.
+- **Automated Resume Attachment:** Automatically finds and attaches the latest PDF resume from your configured directory.
+
 ## Setup
 
 ### Prerequisites
@@ -46,7 +54,7 @@ cp .env.example .env
 
 1. **Edit `config.yaml`** with your profile (name, university, skills, etc.)
 2. **Place `credentials.json`** in `credentials/` (from Google Cloud Console)
-3. **Set your resume directory** in `.env` (`RESUME_DIR=~/Documents/resumes/`)
+3. **Set your resume directory** in `config.yaml` under `user.resume_dir` (e.g., `~/Documents/resumes/`)
 
 ### Gmail OAuth Setup
 
@@ -76,7 +84,7 @@ python -m server.main
 jobhunt
 ```
 
-Then browse LinkedIn, select post text, and press `Cmd+Shift+X`.
+Then browse LinkedIn, select post text, and press `Cmd+Shift+X` (or `Ctrl+Shift+X` on Windows).
 
 ## Project Structure
 
