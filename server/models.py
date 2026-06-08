@@ -80,7 +80,13 @@ class EmailDraft(BaseModel):
     @field_validator("to_email")
     @classmethod
     def validate_to_email(cls, v: str) -> str:
-        """Ensure to_email is a valid email format."""
+        """Ensure to_email is a valid email format, or empty/placeholder."""
+        v_stripped = v.strip()
+        # Allow empty strings or placeholders (e.g. "[Recipient Email]") since the webhook
+        # overrides this with the actual extracted/manual email anyway.
+        if not v_stripped or v_stripped.startswith("["):
+            return v_stripped
+            
         if not EMAIL_REGEX.match(v):
             raise ValueError(f"Invalid email format: {v}")
         return v

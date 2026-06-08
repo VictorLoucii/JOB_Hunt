@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from server.config import get_settings, get_user_profile
 from server.routers import webhook
@@ -85,6 +86,20 @@ app = FastAPI(
     description="HITL LinkedIn Email Drafter",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# CORS — allow Tampermonkey script (running on LinkedIn) to POST to this server.
+# GM_xmlhttpRequest bypasses browser CORS, but this also enables curl testing
+# and fallback for Tampermonkey forks that use fetch().
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://www.linkedin.com",
+        "https://linkedin.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["POST"],
+    allow_headers=["*"],
 )
 
 # Register routers
