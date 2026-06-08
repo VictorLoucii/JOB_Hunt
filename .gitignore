@@ -64,3 +64,7 @@ logs/
 # ---- Distribution / Build ----
 *.tar.gz
 *.zip
+
+
+# ---- implementaion plans ----
+implementaion_plans/

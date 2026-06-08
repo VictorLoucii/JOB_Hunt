@@ -1,6 +1,6 @@
 # JobHunt — HITL LinkedIn Email Drafter
 
-A cost-effective, semi-automated agentic workflow that drafts highly personalized internship application emails from LinkedIn posts.
+A cost-effective, semi-automated agentic workflow that drafts highly personalized internship/job application emails from LinkedIn posts.
 
 ## How It Works
 
