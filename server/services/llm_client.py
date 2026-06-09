@@ -50,12 +50,16 @@ Rules:
    conflicts with the user's constraints.
 4. Education Status: Consider the candidate's Graduation Date relative to the Current Date. If the current date is the same month/year or later, the candidate HAS ALREADY graduated and possesses the degree. Also, if a role accepts "Pursuing or recently completed", then either students or recent grads are eligible.
 5. Remote Geopolitics: If a role is "Remote" but explicitly restricted to a country outside of India or the US (e.g., "Remote (Pakistan)", "Remote - UK only"), you MUST reject it (is_eligible: False) unless that specific country is in the Allowed Locations list.
+6. Job Post Validation: If the text provided is just an informational article, thought-leadership post, or discussion (NOT a job or internship listing), you MUST reject it (is_eligible: False).
+7. Excluded Roles: Reject any role that is primarily focused on the Excluded Role Types (e.g., Sales, Marketing, Outreach), even if it has 'AI' in the title.
+8. Paid-Only Filter: Reject any role that explicitly states compensation is 100% commission or performance-based.
 
 Candidate Constraints:
 Allowed Locations: {locations}
 Max Experience Required: {max_exp} years
 Graduation Date: {grad_date}
 Degree: {degree}
+Excluded Role Types: {excluded_roles}
 
 Current Date:
 {current_date}
@@ -177,6 +181,8 @@ class LLMClient:
         """
         locs = constraints.allowed_locations
         locations_str = ", ".join(locs) if locs else "Any"
+        excluded = constraints.excluded_role_types
+        excluded_roles_str = ", ".join(excluded) if excluded else "None"
         current_date_str = datetime.now(UTC).strftime("%B %Y")
         
         prompt = _ELIGIBILITY_PROMPT.format(
@@ -184,6 +190,7 @@ class LLMClient:
             max_exp=constraints.max_experience_required_years,
             grad_date=constraints.grad_date,
             degree=constraints.degree,
+            excluded_roles=excluded_roles_str,
             current_date=current_date_str,
             post_text=post_text,
         )

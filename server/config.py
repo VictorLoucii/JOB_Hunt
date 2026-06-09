@@ -85,6 +85,7 @@ class UserConstraints(BaseModel):
     max_experience_required_years: int = Field(default=0)
     grad_date: str = Field(default="")
     degree: str = Field(default="")
+    excluded_role_types: list[str] = Field(default_factory=list)
 
 
 class UserProfile:

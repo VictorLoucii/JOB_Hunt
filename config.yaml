@@ -22,6 +22,7 @@ user:
     max_experience_required_years: 1
     grad_date: "June 2026"
     degree: "BSc(H) Computer Science"
+    excluded_role_types: ["Sales", "Marketing", "Outreach", "Growth", "HR", "Recruitment"]
   linkedin: "https://www.linkedin.com/in/victor-loucii-48351a292/"
   portfolio: "https://victor-neisa-portfolio.netlify.app/"  # Optional: your portfolio URL
   project_link: "https://github.com/VictorLoucii/unified-knowledge-agent"
