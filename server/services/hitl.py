@@ -13,10 +13,32 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from server.models import DraftResult
+from server.models import DraftResult, EligibilityResult
 
 logger = logging.getLogger(__name__)
 console = Console()
+
+
+def display_eligibility_rejection_log(post_text: str, result: EligibilityResult) -> None:
+    """
+    Display a log when a post is rejected during the eligibility screening.
+    
+    Args:
+        post_text: Original LinkedIn post text.
+        result: The EligibilityResult containing the reasoning.
+    """
+    console.print()
+
+    # Show a short preview of the post
+    post_preview = post_text
+    if len(post_preview) > 100:
+        post_preview = post_preview[:100] + "..."
+
+    logger.info("🔍 Analyzing post for eligibility: \"%s\"", post_preview)
+    logger.info("❌ Post skipped. You do not meet the strict requirements.")
+    
+    # We use rich to print the reason with the arrow as requested
+    console.print(f"       [yellow]↳ Reason:[/yellow] {result.reasoning}")
 
 
 def display_draft_success_log(result: DraftResult) -> None:

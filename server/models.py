@@ -72,6 +72,31 @@ class ExtractedEmail(BaseModel):
         return v
 
 
+class EligibilityResult(BaseModel):
+    """Result of the LLM eligibility screening."""
+
+    hard_requirements_found: list[str] = Field(
+        ...,
+        description="Strict dealbreakers mentioned in the post (e.g., 'Must have 5 years experience', 'Requires US Citizenship').",
+    )
+    soft_requirements_found: list[str] = Field(
+        ...,
+        description="Nice-to-haves or preferred qualifications (e.g., 'Master's preferred', 'Bonus points for AWS').",
+    )
+    candidate_matches_hard_requirements: bool = Field(
+        ...,
+        description="True if the candidate meets ALL hard requirements.",
+    )
+    reasoning: str = Field(
+        ...,
+        description="Short explanation of why the candidate is or isn't eligible based ONLY on hard requirements.",
+    )
+    is_eligible: bool = Field(
+        ...,
+        description="Final decision. True if eligible, False if disqualified.",
+    )
+
+
 class EmailDraft(BaseModel):
     """LLM-generated email draft (matches the JSON schema in email_draft.txt)."""
 

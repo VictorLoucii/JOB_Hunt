@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from server.dependencies import get_db, get_gmail_client, get_llm_client, get_settings
 from server.main import app
-from server.models import DraftStatus, EmailDraft
+from server.models import DraftStatus, EligibilityResult, EmailDraft
 from server.services.db import Database
 
 
@@ -32,6 +32,15 @@ def client(mock_db, mock_settings):
     app.dependency_overrides[get_settings] = lambda: mock_settings
     app.dependency_overrides[get_llm_client] = lambda: mock_llm
     app.dependency_overrides[get_gmail_client] = lambda: mock_gmail
+
+    # Default eligibility mock
+    mock_llm.evaluate_eligibility = AsyncMock(return_value=EligibilityResult(
+        is_eligible=True,
+        hard_requirements_found=[],
+        soft_requirements_found=[],
+        candidate_matches_hard_requirements=True,
+        reasoning="Eligible by default",
+    ))
 
     with TestClient(app) as c:
         yield c, mock_llm, mock_gmail, mock_db
@@ -98,3 +107,40 @@ def test_webhook_valid_payload_pipeline_fires(mock_display, client):
     assert response.status_code == 200
     assert response.json()["status"] == "approved"
     mock_display.assert_called_once()
+
+@patch("server.routers.webhook.display_eligibility_rejection_log")
+def test_webhook_ineligible_pipeline_skips(mock_display_rejection, client):
+    c, mock_llm, mock_gmail, mock_db = client
+
+    # Setup eligibility mock to reject candidate
+    mock_llm.evaluate_eligibility = AsyncMock(return_value=EligibilityResult(
+        is_eligible=False,
+        hard_requirements_found=["Must live in New York"],
+        soft_requirements_found=[],
+        candidate_matches_hard_requirements=False,
+        reasoning="Candidate is located in Delhi, but job requires New York",
+    ))
+
+    response = c.post("/webhook", json={
+        "selected_text": "Hiring in New York! Must live in New York.",
+        "page_url": "https://www.linkedin.com/posts/789",
+        "content_hash": "hash789",
+    })
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "skipped"
+    assert response.json()["reason"] == "ineligible"
+
+    # Verify db state
+    history = mock_db.get_history()
+    assert len(history) == 1
+    record = history[0]
+    assert record.status == DraftStatus.SKIPPED
+    assert record.subject == "[Rejected] Eligibility Screening"
+    assert record.page_url == "https://www.linkedin.com/posts/789"
+
+    # Verify display log was called
+    mock_display_rejection.assert_called_once()
+
+
+

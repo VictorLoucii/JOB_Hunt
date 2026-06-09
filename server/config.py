@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -77,6 +77,14 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return Path(v).expanduser()
         return v
+
+
+class UserConstraints(BaseModel):
+    """User's hard constraints for job applications."""
+    allowed_locations: list[str] = Field(default_factory=list)
+    max_experience_required_years: int = Field(default=0)
+    grad_date: str = Field(default="")
+    degree: str = Field(default="")
 
 
 class UserProfile:
@@ -146,6 +154,11 @@ class UserProfile:
     @property
     def llm_max_tokens(self) -> int:
         return self._data.get("llm", {}).get("max_tokens", 1024)
+
+    @property
+    def constraints(self) -> UserConstraints:
+        constraints_data = self._data.get("user", {}).get("constraints", {})
+        return UserConstraints(**constraints_data)
 
     def to_prompt_context(self) -> str:
         """

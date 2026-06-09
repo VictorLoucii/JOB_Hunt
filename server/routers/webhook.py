@@ -12,13 +12,13 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from server.config import Settings
+from server.config import Settings, get_user_profile
 from server.dependencies import get_db, get_gmail_client, get_llm_client, get_settings
 from server.models import DraftResult, DraftStatus, WebhookPayload
 from server.services.db import Database
 from server.services.email_extractor import extract_email
 from server.services.gmail_client import GmailClient
-from server.services.hitl import display_draft_success_log
+from server.services.hitl import display_draft_success_log, display_eligibility_rejection_log
 from server.services.llm_client import LLMClient
 from server.utils.resume import find_latest_resume
 
@@ -48,6 +48,28 @@ async def handle_webhook(
     if db.is_duplicate(content_hash=payload.content_hash):
         logger.info("Skipping duplicate post (hash match)")
         return {"status": "skipped", "reason": "duplicate_post"}
+
+    # 1.5. Eligibility Screening
+    user_profile = get_user_profile()
+    try:
+        eligibility = await llm_client.evaluate_eligibility(
+            post_text=payload.selected_text,
+            constraints=user_profile.constraints,
+        )
+    except Exception as e:
+        logger.error("Failed to evaluate eligibility: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to evaluate eligibility") from e
+
+    if not eligibility.is_eligible:
+        display_eligibility_rejection_log(payload.selected_text, eligibility)
+        db.insert_record(
+            page_url=payload.page_url,
+            author_email="",
+            subject="[Rejected] Eligibility Screening",
+            status=DraftStatus.SKIPPED,
+            content_hash=payload.content_hash,
+        )
+        return {"status": "skipped", "reason": "ineligible"}
 
     # 2. Email Extraction
     extracted_email = await extract_email(payload.selected_text, llm_client)

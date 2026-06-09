@@ -14,8 +14,8 @@ from pathlib import Path
 
 import httpx
 
-from server.config import PROJECT_ROOT, Settings, UserProfile
-from server.models import EmailDraft
+from server.config import PROJECT_ROOT, Settings, UserConstraints, UserProfile
+from server.models import EligibilityResult, EmailDraft
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,34 @@ Return ONLY the email address, nothing else.
 If no email is found, return "NONE".
 
 Text: {text}"""
+
+_ELIGIBILITY_PROMPT = """Evaluate if candidate is eligible based on their strict constraints.
+You MUST output JSON matching EXACTLY this schema:
+{{
+  "hard_requirements_found": ["list of strict dealbreakers"],
+  "soft_requirements_found": ["list of preferred qualifications"],
+  "candidate_matches_hard_requirements": true/false,
+  "reasoning": "short explanation based only on hard requirements",
+  "is_eligible": true/false
+}}
+
+Rules:
+1. Bias Towards Action: If a qualification is listed as 'preferred', 'bonus', or
+   'nice to have', it MUST be ignored for eligibility purposes.
+2. Benefit of the Doubt: If it is ambiguous whether a requirement is strict or
+   preferred, default to marking the candidate as is_eligible: True.
+3. Strict Matching: Only reject (is_eligible: False) if the post explicitly uses
+   exclusionary language (e.g., "Must have", "Required", "Strictly on-site") that
+   conflicts with the user's constraints.
+
+Candidate Constraints:
+Allowed Locations: {locations}
+Max Experience Required: {max_exp} years
+Graduation Date: {grad_date}
+Degree: {degree}
+
+Job Post:
+{post_text}"""
 
 
 class LLMError(Exception):
@@ -124,6 +152,61 @@ class LLMClient:
 
         logger.info("Email draft generated — subject: %s", draft.subject)
         return draft
+
+    async def evaluate_eligibility(
+        self, post_text: str, constraints: UserConstraints
+    ) -> EligibilityResult:
+        """
+        Evaluate if a LinkedIn post meets the user's hard constraints.
+
+        Args:
+            post_text: The raw LinkedIn post text.
+            constraints: The user's hard constraints.
+
+        Returns:
+            Validated EligibilityResult.
+
+        Raises:
+            LLMError: If the API call fails or response can't be parsed.
+        """
+        locs = constraints.allowed_locations
+        locations_str = ", ".join(locs) if locs else "Any"
+        prompt = _ELIGIBILITY_PROMPT.format(
+            locations=locations_str,
+            max_exp=constraints.max_experience_required_years,
+            grad_date=constraints.grad_date,
+            degree=constraints.degree,
+            post_text=post_text,
+        )
+
+        payload = {
+            "model": self._user_profile.llm_model,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.0,  # Deterministic for screening
+            "max_tokens": 500,
+            "response_format": {"type": "json_object"},
+        }
+
+        raw_content = await self._call_api(payload)
+
+        try:
+            parsed = json.loads(raw_content)
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse LLM JSON response: %s\nRaw: %s", e, raw_content)
+            raise LLMError(f"Invalid JSON from LLM: {e}") from e
+
+        try:
+            result = EligibilityResult.model_validate(parsed)
+        except Exception as e:
+            logger.error(
+                "Pydantic validation failed for LLM response: %s\nParsed: %s", e, parsed
+            )
+            raise LLMError(f"LLM response failed validation: {e}") from e
+
+        logger.info("Eligibility evaluated — eligible: %s", result.is_eligible)
+        return result
 
     async def extract_email(self, text: str) -> str | None:
         """
