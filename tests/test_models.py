@@ -34,6 +34,7 @@ class TestWebhookPayload:
         payload = WebhookPayload(
             selected_text="Hiring ML interns! Email: test@acme.ai",
             page_url="https://www.linkedin.com/posts/1234",
+            content_hash="hash",
         )
         assert payload.selected_text == "Hiring ML interns! Email: test@acme.ai"
         assert payload.page_url == "https://www.linkedin.com/posts/1234"
@@ -44,6 +45,7 @@ class TestWebhookPayload:
         payload = WebhookPayload(
             selected_text="Some text",
             page_url="https://linkedin.com/posts/5678",
+            content_hash="hash",
         )
         assert payload.page_url == "https://linkedin.com/posts/5678"
 
@@ -54,6 +56,7 @@ class TestWebhookPayload:
             selected_text="Test",
             page_url="https://www.linkedin.com/posts/1",
             timestamp=ts,
+            content_hash="hash",
         )
         assert payload.timestamp == ts
 
@@ -150,14 +153,14 @@ class TestEmailDraft:
         )
         assert draft.to_email == "hire@company.com"
 
-    def test_invalid_to_email_rejected(self) -> None:
-        """Invalid to_email (non-empty, non-placeholder, bad format) should fail."""
-        with pytest.raises(ValidationError, match="Invalid email format"):
-            EmailDraft(
-                to_email="not-valid",
-                subject="Test",
-                body="Test body",
-            )
+    def test_invalid_to_email_sanitized(self) -> None:
+        """Invalid to_email (non-empty, non-placeholder, bad format) should be sanitized to empty string."""
+        draft = EmailDraft(
+            to_email="not-valid",
+            subject="Test",
+            body="Test body",
+        )
+        assert draft.to_email == ""
 
     def test_empty_to_email_allowed(self) -> None:
         """Empty to_email is allowed (webhook overrides it later)."""
@@ -210,6 +213,7 @@ class TestDraftResult:
             extracted_email=ExtractedEmail(
                 email="a@b.com", source="regex", confidence=1.0
             ),
+            content_hash="hash",
         )
         assert result.draft.to_email == "a@b.com"
         assert result.resume_path == "/path/to/resume.pdf"
@@ -226,6 +230,7 @@ class TestDraftResult:
             extracted_email=ExtractedEmail(
                 email="a@b.com", source="regex", confidence=1.0
             ),
+            content_hash="hash",
         )
         assert result.resume_path is None
 

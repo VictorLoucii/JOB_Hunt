@@ -106,8 +106,8 @@ class Database:
                 logger.info("Duplicate detected — same content hash.")
                 return True
 
-        # Check 2: Same email, but only if we already approved/sent to them.
-        if author_email:
+        # Check 2: Same email, but only if we already approved/sent to them (and email is not empty).
+        if author_email and author_email.strip():
             cursor = self._conn.execute(
                 "SELECT 1 FROM drafts WHERE author_email = ? AND status = 'approved' LIMIT 1",
                 (author_email,),

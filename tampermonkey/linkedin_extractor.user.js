@@ -18,7 +18,7 @@
 
     // Configuration
     const WEBHOOK_URL = "http://127.0.0.1:8000/webhook";
-    const REQUEST_TIMEOUT_MS = 5000;
+    const REQUEST_TIMEOUT_MS = 30000; // Increased to 30 seconds to allow LLM time to generate draft
     const TOAST_DURATION_MS = 3000;
 
     // Toast styles

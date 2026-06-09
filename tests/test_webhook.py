@@ -46,10 +46,12 @@ def test_webhook_duplicate_post(client):
         author_email="test@co.com",
         subject="Test",
         status=DraftStatus.DRAFTED,
+        content_hash="hash123",
     )
     response = c.post("/webhook", json={
         "selected_text": "Some text",
         "page_url": "https://www.linkedin.com/posts/123",
+        "content_hash": "hash123",
     })
     assert response.status_code == 200
     assert response.json()["status"] == "skipped"
@@ -60,6 +62,7 @@ def test_webhook_invalid_payload_empty_text(client):
     response = c.post("/webhook", json={
         "selected_text": "",
         "page_url": "https://www.linkedin.com/posts/123",
+        "content_hash": "hash123",
     })
     assert response.status_code == 422
 
@@ -68,16 +71,19 @@ def test_webhook_invalid_payload_non_linkedin_url(client):
     response = c.post("/webhook", json={
         "selected_text": "Some text",
         "page_url": "https://twitter.com/posts/123",
+        "content_hash": "hash123",
     })
     assert response.status_code == 422
 
-@patch("server.routers.webhook.present_hitl_review", return_value="A")
-@patch("server.routers.webhook.prompt_for_email", return_value="test@example.com")
-def test_webhook_valid_payload_pipeline_fires(mock_prompt, mock_hitl, client):
+@patch("server.routers.webhook.display_draft_success_log")
+def test_webhook_valid_payload_pipeline_fires(mock_display, client):
+    from server.models import ExtractedEmail
     c, mock_llm, mock_gmail, mock_db = client
 
     # Setup mocks
-    mock_llm.extract_email = AsyncMock(return_value="test@example.com")
+    mock_llm.extract_email = AsyncMock(return_value=ExtractedEmail(
+        email="test@example.com", source="llm", confidence=0.9
+    ))
     mock_llm.draft_email = AsyncMock(return_value=EmailDraft(
         to_email="test@example.com", subject="Test", body="Body"
     ))
@@ -86,7 +92,9 @@ def test_webhook_valid_payload_pipeline_fires(mock_prompt, mock_hitl, client):
     response = c.post("/webhook", json={
         "selected_text": "Hiring! email is test@example.com",
         "page_url": "https://www.linkedin.com/posts/456",
+        "content_hash": "hash123",
     })
 
     assert response.status_code == 200
     assert response.json()["status"] == "approved"
+    mock_display.assert_called_once()

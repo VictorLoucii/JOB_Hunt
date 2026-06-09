@@ -7,14 +7,10 @@ Rich terminal UI for reviewing, editing, and approving email drafts.
 from __future__ import annotations
 
 import logging
-import os
-import subprocess
-import tempfile
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.text import Text
 
 from server.models import DraftResult
@@ -23,52 +19,19 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-def prompt_for_email(page_url: str) -> str:
+def display_draft_success_log(result: DraftResult) -> None:
     """
-    Prompt the user to manually enter an email address if extraction failed.
-    
-    Args:
-        page_url: The LinkedIn post URL for context.
-        
-    Returns:
-        The manually entered email address.
-    """
-    console.print()
-    console.print(
-        Panel(
-            f"[bold yellow]⚠️ No email address could be extracted automatically.[/bold yellow]\n\n"
-            f"[dim]Post URL: {page_url}[/dim]\n"
-            f"Please check the post in your browser and enter the recipient's email.",
-            title="Manual Email Entry Required",
-            border_style="yellow",
-        )
-    )
-
-    email = ""
-    while not email:
-        email = Prompt.ask("[bold green]Recipient Email[/bold green]").strip()
-        if not email:
-            console.print("[red]Email cannot be empty. Please try again.[/red]")
-
-    return email
-
-
-def present_hitl_review(result: DraftResult) -> str:
-    """
-    Display the drafted email and prompt the user for action.
+    Display a read-only, non-blocking summary of the successfully drafted email.
     
     Args:
         result: The DraftResult containing the post, draft, and metadata.
-        
-    Returns:
-        A string representing the user's choice: 'A', 'E', 'R', or 'S'.
     """
-    console.clear()
+    console.print()  # Add some spacing
 
     # 1. LinkedIn Post Panel
     post_preview = result.post_text
-    if len(post_preview) > 300:
-        post_preview = post_preview[:300] + "..."
+    if len(post_preview) > 200:
+        post_preview = post_preview[:200] + "..."
 
     console.print(
         Panel(
@@ -80,31 +43,43 @@ def present_hitl_review(result: DraftResult) -> str:
 
     # 2. Email Draft Panel
     draft_content = Text()
-    draft_content.append("To: ", style="bold green")
-    draft_content.append(f"{result.draft.to_email}\n")
+    
+    # Highlight if email is missing
+    if not result.draft.to_email:
+        draft_content.append("To: ", style="bold red")
+        draft_content.append("[Needs Email] (Please add manually in Gmail)\n", style="bold red")
+    else:
+        draft_content.append("To: ", style="bold green")
+        draft_content.append(f"{result.draft.to_email}\n")
+        
     draft_content.append("Subject: ", style="bold green")
     draft_content.append(f"{result.draft.subject}\n\n")
     
     # Strip HTML tags for clean terminal viewing
     clean_body = result.draft.body.replace("<b>", "").replace("</b>", "")
-    draft_content.append(clean_body)
+    # Only show the first few lines of the body to keep the terminal clean
+    body_lines = clean_body.splitlines()
+    body_preview = "\n".join(body_lines[:5])
+    if len(body_lines) > 5:
+        body_preview += "\n\n[dim]...(draft truncated, view full in Gmail)[/dim]"
+    
+    draft_content.append(body_preview)
 
     console.print(
         Panel(
             draft_content,
-            title="✉️  DRAFTED EMAIL",
+            title="✉️  GMAIL DRAFT CREATED",
             border_style="green",
         )
     )
 
-    # 3. Metadata Panel
+    # 3. Metadata Note
     resume_text = (
         Path(result.resume_path).name if result.resume_path else "None"
     )
     metadata_content = (
-        f"📎 [bold]Resume:[/bold] {resume_text}\n"
-        f"📊 [bold]Email source:[/bold] {result.extracted_email.source} "
-        f"(confidence: {result.extracted_email.confidence:.1f})"
+        f"📎 [bold]Attached Resume:[/bold] {resume_text}\n"
+        f"✅ [bold]Status:[/bold] Ready for your review in Gmail Drafts."
     )
 
     console.print(
@@ -113,95 +88,3 @@ def present_hitl_review(result: DraftResult) -> str:
             border_style="dim",
         )
     )
-
-    # 4. Action Prompt
-    choices = ["A", "E", "R", "S"]
-    choice_text = "[A]pprove  [E]dit  [R]egenerate  [S]kip"
-
-    action = Prompt.ask(
-        f"\n{choice_text}",
-        choices=[c.lower() for c in choices] + choices,
-        show_choices=False,
-    ).upper()
-
-    if action == "E":
-        _handle_edit(result)
-
-    return action
-
-
-def _handle_edit(result: DraftResult) -> None:
-    """
-    Open the draft in the system editor and parse it back upon save.
-    Mutates the result in place.
-    """
-    editor = os.environ.get("EDITOR", "nano")
-
-    # Create the initial content for the editor.
-    content = (
-        f"To: {result.draft.to_email}\n"
-        f"Subject: {result.draft.subject}\n"
-        f"---\n"
-        f"{result.draft.body}"
-    )
-
-    # Write to temp file.
-    with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as tf:
-        tf.write(content)
-        tf.flush()
-        tmp_path = tf.name
-
-    try:
-        # Open editor.
-        subprocess.run([editor, tmp_path], check=True)
-
-        # Read the file back.
-        with open(tmp_path, encoding="utf-8") as f:
-            edited_content = f.read()
-
-        _parse_edited_content(result, edited_content)
-        logger.info("Draft successfully updated from editor.")
-
-    except subprocess.CalledProcessError as e:
-        logger.error("Editor process failed: %s", e)
-        console.print(f"[red]Failed to open editor: {e}[/red]")
-    except Exception as e:
-        logger.error("Failed to parse edited draft: %s", e)
-        console.print(f"[red]Failed to parse edited draft: {e}[/red]")
-        Prompt.ask("Press Enter to continue")
-    finally:
-        # Cleanup temp file.
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-
-def _parse_edited_content(result: DraftResult, content: str) -> None:
-    """
-    Parse the content returned from the text editor back into the DraftResult.
-    Expected format:
-    To: <email>
-    Subject: <subject>
-    ---
-    <body>
-    """
-    lines = content.splitlines()
-
-    to_email = result.draft.to_email
-    subject = result.draft.subject
-    body_lines = []
-
-    in_body = False
-
-    for line in lines:
-        if in_body:
-            body_lines.append(line)
-        elif line.startswith("To:"):
-            to_email = line[3:].strip()
-        elif line.startswith("Subject:"):
-            subject = line[8:].strip()
-        elif line.startswith("---"):
-            in_body = True
-
-    result.draft.to_email = to_email
-    result.draft.subject = subject
-    result.draft.body = "\n".join(body_lines).strip()

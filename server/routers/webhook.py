@@ -18,7 +18,7 @@ from server.models import DraftResult, DraftStatus, WebhookPayload
 from server.services.db import Database
 from server.services.email_extractor import extract_email
 from server.services.gmail_client import GmailClient
-from server.services.hitl import present_hitl_review, prompt_for_email
+from server.services.hitl import display_draft_success_log
 from server.services.llm_client import LLMClient
 from server.utils.resume import find_latest_resume
 
@@ -53,11 +53,8 @@ async def handle_webhook(
     extracted_email = await extract_email(payload.selected_text, llm_client)
 
     if not extracted_email.email:
-        # Prompt user manually via HITL UI.
-        manual_email = await asyncio.to_thread(prompt_for_email, payload.page_url)
-        extracted_email.email = manual_email
-        extracted_email.source = "manual"
-        extracted_email.confidence = 1.0
+        # Just use an empty string, the user will fill it in Gmail.
+        extracted_email.email = ""
 
     # Check if we've already emailed this person.
     if db.is_duplicate(author_email=extracted_email.email):
@@ -88,60 +85,28 @@ async def handle_webhook(
         extracted_email=extracted_email,
     )
 
-    # 5. HITL Review Loop
-    while True:
-        action = await asyncio.to_thread(present_hitl_review, draft_result)
-
-        if action == "A":
-            # Approve -> Send to Gmail and save to DB
-            logger.info("Draft approved.")
-            try:
-                # `create_draft` blocks, so run it in a thread if it's slow.
-                # To be safe and compliant with Code Quality rules, we use to_thread.
-                await asyncio.to_thread(
-                    gmail_client.create_draft,
-                    draft_result.draft,
-                    resume_path,
-                )
-                db.insert_record(
-                    page_url=draft_result.page_url,
-                    author_email=draft_result.draft.to_email,
-                    subject=draft_result.draft.subject,
-                    status=DraftStatus.APPROVED,
-                    content_hash=draft_result.content_hash,
-                )
-                return {"status": "approved"}
-            except Exception as e:
-                logger.error("Failed to create Gmail draft: %s", e)
-                raise HTTPException(status_code=500, detail="Failed to create Gmail draft") from e
-
-        elif action == "S":
-            # Skip -> Save to DB as skipped
-            logger.info("Draft skipped.")
-            db.insert_record(
-                page_url=draft_result.page_url,
-                author_email=draft_result.draft.to_email,
-                subject=draft_result.draft.subject,
-                status=DraftStatus.SKIPPED,
-                content_hash=draft_result.content_hash,
-            )
-            return {"status": "skipped", "reason": "user_skipped"}
-
-        elif action == "R":
-            # Regenerate -> Call LLM again, update draft, and loop
-            logger.info("Regenerating draft...")
-            try:
-                new_draft = await llm_client.draft_email(payload.selected_text)
-                # Keep the same extracted recipient email.
-                new_draft.to_email = draft_result.draft.to_email
-                draft_result.draft = new_draft
-            except Exception as e:
-                logger.error("Failed to regenerate draft: %s", e)
-                # We can continue the loop, the old draft will be displayed.
-
-        elif action == "E":
-            # Edit -> The hitl service mutated the draft_result in place. Loop again to view.
-            logger.info("Draft edited.")
-
-        else:
-            logger.warning("Unknown HITL action: %s", action)
+    # 5. Draft directly to Gmail (Asynchronous workflow)
+    logger.info("Drafting to Gmail directly...")
+    try:
+        # `create_draft` blocks, so run it in a thread if it's slow.
+        # To be safe and compliant with Code Quality rules, we use to_thread.
+        await asyncio.to_thread(
+            gmail_client.create_draft,
+            draft_result.draft,
+            resume_path,
+        )
+        db.insert_record(
+            page_url=draft_result.page_url,
+            author_email=draft_result.draft.to_email,
+            subject=draft_result.draft.subject,
+            status=DraftStatus.DRAFTED,
+            content_hash=draft_result.content_hash,
+        )
+        
+        # Display the success log to the terminal
+        display_draft_success_log(draft_result)
+        
+        return {"status": "approved"}
+    except Exception as e:
+        logger.error("Failed to create Gmail draft: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to create Gmail draft") from e

@@ -142,29 +142,31 @@ class TestDedup:
 
     def test_no_records_is_not_duplicate(self, db: Database) -> None:
         """Empty database should never flag duplicates."""
-        assert db.is_duplicate(page_url="https://www.linkedin.com/posts/1") is False
+        assert db.is_duplicate(content_hash="hash123") is False
         assert db.is_duplicate(author_email="test@co.com") is False
 
-    def test_same_page_url_is_duplicate(self, db: Database) -> None:
-        """Same page_url (any status) should be flagged as duplicate."""
-        url = "https://www.linkedin.com/posts/123"
+    def test_same_content_hash_is_duplicate(self, db: Database) -> None:
+        """Same content_hash (any status) should be flagged as duplicate."""
+        hash_val = "hash123"
         db.insert_record(
-            page_url=url,
+            page_url="https://www.linkedin.com/posts/123",
             author_email="test@co.com",
             subject="Test",
             status=DraftStatus.SKIPPED,  # Even skipped counts.
+            content_hash=hash_val,
         )
-        assert db.is_duplicate(page_url=url) is True
+        assert db.is_duplicate(content_hash=hash_val) is True
 
-    def test_different_page_url_is_not_duplicate(self, db: Database) -> None:
-        """Different page_url should not be flagged."""
+    def test_different_content_hash_is_not_duplicate(self, db: Database) -> None:
+        """Different content_hash should not be flagged."""
         db.insert_record(
             page_url="https://www.linkedin.com/posts/1",
             author_email="test@co.com",
             subject="Test",
             status=DraftStatus.DRAFTED,
+            content_hash="hash1",
         )
-        assert db.is_duplicate(page_url="https://www.linkedin.com/posts/2") is False
+        assert db.is_duplicate(content_hash="hash2") is False
 
     def test_approved_email_is_duplicate(self, db: Database) -> None:
         """Same email with 'approved' status should be flagged as duplicate."""
