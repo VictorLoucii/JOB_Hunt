@@ -49,6 +49,7 @@ Rules:
    exclusionary language (e.g., "Must have", "Required", "Strictly on-site") that
    conflicts with the user's constraints.
 4. Education Status: Consider the candidate's Graduation Date relative to the Current Date. If the current date is the same month/year or later, the candidate HAS ALREADY graduated and possesses the degree. Also, if a role accepts "Pursuing or recently completed", then either students or recent grads are eligible.
+5. Remote Geopolitics: If a role is "Remote" but explicitly restricted to a country outside of India or the US (e.g., "Remote (Pakistan)", "Remote - UK only"), you MUST reject it (is_eligible: False) unless that specific country is in the Allowed Locations list.
 
 Candidate Constraints:
 Allowed Locations: {locations}
