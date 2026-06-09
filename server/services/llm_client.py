@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -47,12 +48,16 @@ Rules:
 3. Strict Matching: Only reject (is_eligible: False) if the post explicitly uses
    exclusionary language (e.g., "Must have", "Required", "Strictly on-site") that
    conflicts with the user's constraints.
+4. Education Status: Consider the candidate's Graduation Date relative to the Current Date. If the current date is the same month/year or later, the candidate HAS ALREADY graduated and possesses the degree. Also, if a role accepts "Pursuing or recently completed", then either students or recent grads are eligible.
 
 Candidate Constraints:
 Allowed Locations: {locations}
 Max Experience Required: {max_exp} years
 Graduation Date: {grad_date}
 Degree: {degree}
+
+Current Date:
+{current_date}
 
 Job Post:
 {post_text}"""
@@ -171,11 +176,14 @@ class LLMClient:
         """
         locs = constraints.allowed_locations
         locations_str = ", ".join(locs) if locs else "Any"
+        current_date_str = datetime.now(UTC).strftime("%B %Y")
+        
         prompt = _ELIGIBILITY_PROMPT.format(
             locations=locations_str,
             max_exp=constraints.max_experience_required_years,
             grad_date=constraints.grad_date,
             degree=constraints.degree,
+            current_date=current_date_str,
             post_text=post_text,
         )
 
