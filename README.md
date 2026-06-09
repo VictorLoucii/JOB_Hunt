@@ -5,22 +5,22 @@ A cost-effective, semi-automated agentic workflow that drafts highly personalize
 ## How It Works
 
 ```
-LinkedIn Post → Select Text → Cmd+Shift+X → Local Server → DeepSeek LLM → HITL Review → Gmail Draft
+LinkedIn Post → Select Text → Cmd+Shift+X → Local Server → DeepSeek LLM → Auto-Draft → Gmail Draft Review (HITL)
 ```
 
-1. **Browse LinkedIn normally** — find a relevant internship post with an email
-2. **Select the post text** with your mouse
-3. **Press `Cmd+Shift+X`** — Tampermonkey sends it to your local server
-4. **DeepSeek drafts a personalized email** based on your profile
-5. **Review in terminal** — approve, edit, regenerate, or skip
-6. **Gmail draft created** with your resume attached — just hit send
+1. **Browse LinkedIn normally** — find a relevant internship or job post.
+2. **Select the post text** with your mouse (select the whole post for better context).
+3. **Press `Cmd+Shift+X`** — Tampermonkey sends it to your local server.
+4. **DeepSeek drafts a personalized email** based on your profile.
+5. **No Terminal Blocking** — If an email is found, it drafts directly. If no email is found, it drafts the message leaving the recipient field blank.
+6. **Verify in Gmail Drafts (HITL)** — Open your Gmail Drafts folder to review, verify or add the recipient email, and hit send.
 
 ## Features
 
 - **Zero-Risk Extraction:** Uses native `window.getSelection()` and a keyboard shortcut instead of DOM injection, ensuring zero ban risk on LinkedIn.
-- **Robust Email Extraction:** Two-stage pipeline uses regex for standard emails and LLM fallback for obfuscated emails (e.g., `user [at] company [dot] com`), with manual entry if none is found.
+- **Robust Email Extraction:** Two-stage pipeline uses regex for standard emails and LLM fallback for obfuscated emails (e.g., `user [at] company [dot] com`).
+- **Seamless Asynchronous Flow:** Bypasses terminal confirmation prompts, immediately drafting to Gmail for a faster, less disruptive workflow.
 - **Smart Deduplication:** Local SQLite database tracks processed posts and emailed authors to prevent duplicate outreach.
-- **Rich Terminal Review (HITL):** Interactive UI to [A]pprove, [E]dit, [R]egenerate, or [S]kip generated drafts before they reach Gmail.
 - **Automated Resume Attachment:** Automatically finds and attaches the latest PDF resume from your configured directory.
 
 ## Setup
