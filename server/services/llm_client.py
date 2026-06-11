@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -51,8 +52,9 @@ Rules:
 4. Education Status: Consider the candidate's Graduation Date relative to the Current Date. If the current date is the same month/year or later, the candidate HAS ALREADY graduated and possesses the degree. Also, if a role accepts "Pursuing or recently completed", then either students or recent grads are eligible.
 5. Remote Geopolitics: If a role is "Remote" but explicitly restricted to a country outside of India or the US (e.g., "Remote (Pakistan)", "Remote - UK only"), you MUST reject it (is_eligible: False) unless that specific country is in the Allowed Locations list.
 6. Job Post Validation: If the text provided is just an informational article, thought-leadership post, or discussion (NOT a job or internship listing), you MUST reject it (is_eligible: False).
-7. Excluded Roles: Reject any role that is primarily focused on the Excluded Role Types (e.g., Sales, Marketing, Outreach), even if it has 'AI' in the title.
+7. Excluded Roles: Reject if the post ONLY offers roles that are primarily focused on the Excluded Role Types (e.g., Sales, Marketing, Outreach, Research, Consultant), even if they have 'AI' in the title. If the post lists multiple roles and AT LEAST ONE role is NOT an excluded type, do NOT reject the post.
 8. Paid-Only Filter: Reject any role that explicitly states compensation is 100% commission or performance-based.
+9. Recruiter vs Candidate: If the post is written by a candidate looking for a job or internship (e.g., "Currently looking for opportunities"), rather than a recruiter or hiring manager offering a position, you MUST reject it (is_eligible: false) and state the reasoning clearly (e.g., "Poster is a candidate seeking a role, not a recruiter").
 
 Candidate Constraints:
 Allowed Locations: {locations}
@@ -143,7 +145,9 @@ class LLMClient:
             "response_format": {"type": "json_object"},
         }
 
+        start_time = time.perf_counter()
         raw_content = await self._call_api(payload)
+        duration = time.perf_counter() - start_time
 
         # Parse and validate.
         try:
@@ -160,7 +164,7 @@ class LLMClient:
             )
             raise LLMError(f"LLM response failed validation: {e}") from e
 
-        logger.info("Email draft generated — subject: %s", draft.subject)
+        logger.info("Email draft generated in %.2fs — subject: %s", duration, draft.subject)
         return draft
 
     async def evaluate_eligibility(
@@ -205,7 +209,9 @@ class LLMClient:
             "response_format": {"type": "json_object"},
         }
 
+        start_time = time.perf_counter()
         raw_content = await self._call_api(payload)
+        duration = time.perf_counter() - start_time
 
         try:
             parsed = json.loads(raw_content)
@@ -221,7 +227,7 @@ class LLMClient:
             )
             raise LLMError(f"LLM response failed validation: {e}") from e
 
-        logger.info("Eligibility evaluated — eligible: %s", result.is_eligible)
+        logger.info("Eligibility evaluated in %.2fs — eligible: %s", duration, result.is_eligible)
         return result
 
     async def extract_email(self, text: str) -> str | None:
@@ -250,14 +256,16 @@ class LLMClient:
             "max_tokens": 100,  # Short response expected.
         }
 
+        start_time = time.perf_counter()
         raw_content = await self._call_api(payload)
+        duration = time.perf_counter() - start_time
         result = raw_content.strip()
 
         if result.upper() == "NONE" or not result:
-            logger.info("LLM extraction returned no email")
+            logger.info("LLM extraction returned no email in %.2fs" % duration)
             return None
 
-        logger.info("LLM extracted email: %s", result)
+        logger.info("LLM extracted email in %.2fs: %s", duration, result)
         return result
 
     async def _call_api(self, payload: dict) -> str:

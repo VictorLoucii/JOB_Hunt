@@ -18,7 +18,7 @@ user:
     - "Agentic RAG"
     - "LangGraph"
   constraints:
-    allowed_locations: ["Delhi", "Delhi NCR", "Gurgaon", "Noida", "Bangalore", "Tamil Nadu", "Hyderabad", "Telangana" , "Maharashtra", "Remote"]
+    allowed_locations: ["Delhi", "Delhi NCR", "Mumbai", "Gurgaon", "Noida", "Bangalore", "Tamil Nadu", "Hyderabad", "Telangana" , "Maharashtra", "Remote"]
     max_experience_required_years: 1
     grad_date: "June 2026"
     degree: "BSc(H) Computer Science"

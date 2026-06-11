@@ -35,7 +35,7 @@ def display_eligibility_rejection_log(post_text: str, result: EligibilityResult)
         post_preview = post_preview[:100] + "..."
 
     logger.info("🔍 Analyzing post for eligibility: \"%s\"", post_preview)
-    logger.info("❌ Post skipped. You do not meet the strict requirements.")
+    logger.info("❌ Post skipped. Eligibility criteria not met.")
     
     # We use rich to print the reason with the arrow as requested
     console.print(f"       [yellow]↳ Reason:[/yellow] {result.reasoning}")
