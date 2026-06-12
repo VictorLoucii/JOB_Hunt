@@ -41,12 +41,13 @@ def display_eligibility_rejection_log(post_text: str, result: EligibilityResult)
     console.print(f"       [yellow]↳ Reason:[/yellow] {result.reasoning}")
 
 
-def display_draft_success_log(result: DraftResult) -> None:
+def display_draft_success_log(result: DraftResult, elapsed_time: float | None = None) -> None:
     """
     Display a read-only, non-blocking summary of the successfully drafted email.
     
     Args:
         result: The DraftResult containing the post, draft, and metadata.
+        elapsed_time: The time taken to process the email.
     """
     console.print()  # Add some spacing
 
@@ -99,10 +100,10 @@ def display_draft_success_log(result: DraftResult) -> None:
     resume_text = (
         Path(result.resume_path).name if result.resume_path else "None"
     )
-    metadata_content = (
-        f"📎 [bold]Attached Resume:[/bold] {resume_text}\n"
-        f"✅ [bold]Status:[/bold] Ready for your review in Gmail Drafts."
-    )
+    metadata_content = f"📎 [bold]Attached Resume:[/bold] {resume_text}\n"
+    if elapsed_time is not None:
+        metadata_content += f"⏱️  [bold]Time Taken:[/bold] {elapsed_time:.2f}s\n"
+    metadata_content += f"✅ [bold]Status:[/bold] Ready for your review in Gmail Drafts."
 
     console.print(
         Panel(

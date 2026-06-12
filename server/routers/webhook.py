@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -44,6 +45,7 @@ async def handle_webhook(
     4. Pass to HITL for review.
     5. Save to database and Gmail.
     """
+    start_time = time.perf_counter()
     # 1. Deduplication Check
     if db.is_duplicate(content_hash=payload.content_hash):
         logger.info("Skipping duplicate post (hash match)")
@@ -126,7 +128,9 @@ async def handle_webhook(
         )
         
         # Display the success log to the terminal
-        display_draft_success_log(draft_result)
+        elapsed_time = time.perf_counter() - start_time
+        logger.info("\033[1;32m⏱️  [TIMER] Completed drafted email in %.2fs\033[0m", elapsed_time)
+        display_draft_success_log(draft_result, elapsed_time)
         
         return {"status": "approved"}
     except Exception as e:
