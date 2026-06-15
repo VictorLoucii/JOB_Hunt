@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         JobHunt — LinkedIn Extractor
-// @namespace    https://github.com/victor-loucii/jobhunt
+// @namespace    https://github.com/your-username/jobhunt
 // @version      1.0.0
 // @description  Select text on LinkedIn → Cmd+Shift+X → Send to local JobHunt server
-// @author       Victor Neisakuolie
+// @author       Your Name
 // @match        *://www.linkedin.com/*
 // @match        *://linkedin.com/*
 // @grant        GM_xmlhttpRequest

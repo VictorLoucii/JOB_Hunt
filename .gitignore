@@ -32,6 +32,8 @@ Thumbs.db
 # ---- Environment & Secrets ----
 .env
 !.env.example
+config.yaml
+!config.example.yaml
 
 # ---- Gmail OAuth Credentials ----
 credentials/*.json

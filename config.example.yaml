@@ -6,9 +6,9 @@
 # ============================================================
 
 user:
-  name: "Victor Neisakuolie"
-  university: "Hansraj College, University of Delhi"
-  major: "B.Sc. Computer Science"
+  name: "Your Name"
+  university: "Your University"
+  major: "Your Degree/Major"
   graduation: "2026"
   skills:
     - "Python"
@@ -18,18 +18,18 @@ user:
     - "Agentic RAG"
     - "LangGraph"
   constraints:
-    allowed_locations: ["Delhi", "Delhi NCR", "Mumbai", "Gurgaon", "Noida", "Bangalore", "Tamil Nadu", "Hyderabad", "Telangana" , "Maharashtra", "Remote"]
+    allowed_locations: ["Location 1", "Location 2", "Remote"]
     max_experience_required_years: 1
     grad_date: "June 2026"
-    degree: "BSc(H) Computer Science"
+    degree: "Your Degree"
     excluded_role_types: ["Sales", "Marketing", "Outreach", "Growth", "HR", "Recruitment"]
-  linkedin: "https://www.linkedin.com/in/victor-loucii-48351a292/"
-  portfolio: "https://victor-neisa-portfolio.netlify.app/"  # Optional: your portfolio URL
-  project_link: "https://github.com/VictorLoucii/unified-knowledge-agent"
+  linkedin: "https://www.linkedin.com/in/your-profile/"
+  portfolio: "https://your-portfolio.com/"  # Optional: your portfolio URL
+  project_link: "https://github.com/your-username/project"
 
 # Resume configuration
 resume:
-  dir: "/Users/victorloucii/Desktop/AI_CV"  # Directory containing your resume PDF(s)
+  dir: "/Users/your-username/Documents/Resumes"  # Directory containing your resume PDF(s)
   # The server will automatically pick the most recently modified .pdf file
 
 # LLM configuration
@@ -43,11 +43,8 @@ llm:
 # Target filters (for reference — filtering is manual via LinkedIn search)
 targets:
   locations:
-    - "Bangalore"
-    - "Delhi"
-    - "Delhi NCR"
-    - "Gurgaon"
-    - "Noida"
+    - "Location 1"
+    - "Location 2"
   # Rule: Target any post with an email, even if "paid" isn't explicitly mentioned.
   # EXCEPTION: Ignore posts mentioning "performance based stipend" (usually unpaid).
   type: "paid or unspecified (no performance-based stipend)"
