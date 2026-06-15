@@ -28,6 +28,7 @@ LinkedIn Post → Select Text → Cmd+Shift+X → Local Server → Eligibility S
 - **Seamless Asynchronous Flow:** Bypasses terminal confirmation prompts, immediately drafting to Gmail for a faster, less disruptive workflow.
 - **Smart Deduplication:** Local SQLite database tracks processed posts and emailed authors to prevent duplicate outreach.
 - **Automated Resume Attachment:** Automatically finds and attaches the latest PDF resume from your configured directory.
+- **Automatic LLM Fallback:** Configures a fallback chain (e.g. DeepSeek with Gemini 2.5 Flash fallback) to automatically recover from rate limits (429 errors) or model downtime.
 
 
 ## Setup
@@ -71,6 +72,15 @@ cp .env.example .env
    ```
 2. **Place `credentials.json`** in `credentials/` (from Google Cloud Console)
 3. **Set your resume directory** in `config.yaml` under `user.resume_dir` (e.g., `~/Documents/resumes/`)
+4. **Configure your LLM settings** in `config.yaml` with fallback models to handle 429 rate limits dynamically:
+   ```yaml
+   llm:
+     model: "deepseek/deepseek-chat"
+     fallback_models:
+       - "google/gemini-2.5-flash"
+     temperature: 0.7
+     max_tokens: 1024
+   ```
 
 
 ### Gmail OAuth Setup
