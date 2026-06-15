@@ -281,6 +281,12 @@ class LLMClient:
         Raises:
             LLMError: On network errors, non-200 status, or missing content.
         """
+        # Inject fallback models into payload if configured and not already present
+        fallback_models = self._user_profile.llm_fallback_models
+        if fallback_models and "models" not in payload:
+            primary = payload.get("model", self._user_profile.llm_model)
+            payload["models"] = [primary] + fallback_models
+
         try:
             response = await self._client.post("/chat/completions", json=payload)
         except httpx.TimeoutException as e:

@@ -149,6 +149,10 @@ class UserProfile:
         return self._data.get("llm", {}).get("model", "deepseek/deepseek-chat")
 
     @property
+    def llm_fallback_models(self) -> list[str]:
+        return self._data.get("llm", {}).get("fallback_models", [])
+
+    @property
     def llm_temperature(self) -> float:
         return self._data.get("llm", {}).get("temperature", 0.7)
 
