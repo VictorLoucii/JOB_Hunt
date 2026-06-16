@@ -112,13 +112,13 @@ class EmailDraft(BaseModel):
             return ""
         if not isinstance(v, str):
             v = str(v)
-            
+
         v_stripped = v.strip()
         # Just return the string. If it's totally invalid, the webhook overrides it
         # with the extracted/manual email before sending to Gmail.
         if not v_stripped or v_stripped.startswith("[") or EMAIL_REGEX.match(v_stripped):
             return v_stripped
-        
+
         # If the LLM hallucinated some random text (like "extracted email from post"),
         # just return an empty string to avoid crashing.
         return ""

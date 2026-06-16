@@ -116,13 +116,19 @@
                 if (response.status >= 200 && response.status < 300) {
                     try {
                         const json = JSON.parse(response.responseText);
-                        if (json.status === "skipped" && json.reason === "duplicate_post") {
-                            showToast("Already processed this post.", "info");
+                        if (json.status === "skipped") {
+                            if (json.reason === "duplicate_post") {
+                                showToast("Already processed this post.", "info");
+                            } else if (json.reason === "ineligible") {
+                                showToast("Skipped: Ineligible for role.", "info");
+                            } else if (json.reason === "duplicate_recipient") {
+                                showToast("Skipped: Already emailed this person.", "info");
+                            }
                         } else {
-                            showToast("✅ Sent! Check your terminal.", "success");
+                            showToast("Processing... check your terminal.", "success");
                         }
                     } catch (e) {
-                        showToast("✅ Sent! Check your terminal.", "success");
+                        showToast("Processing... check your terminal.", "success");
                     }
                 } else if (response.status === 409) {
                     showToast("Already processed this post.", "info");

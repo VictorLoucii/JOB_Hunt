@@ -68,13 +68,13 @@ class Database:
         """Create tables and indexes if they don't exist."""
         with self._conn:
             self._conn.execute(_CREATE_TABLE_SQL)
-            
+
             # Migration: Add content_hash if it doesn't exist (for existing DBs)
             try:
                 self._conn.execute("ALTER TABLE drafts ADD COLUMN content_hash TEXT")
             except sqlite3.OperationalError:
                 pass  # Column already exists
-                
+
             for index_sql in _CREATE_INDEXES_SQL:
                 self._conn.execute(index_sql)
 
@@ -205,6 +205,18 @@ class Database:
                 )
             )
         return records
+
+    def get_stats(self) -> dict[str, int]:
+        """
+        Get counts of records grouped by status.
+
+        Returns:
+            Dictionary mapping status string to count.
+        """
+        cursor = self._conn.execute(
+            "SELECT status, COUNT(*) as count FROM drafts GROUP BY status"
+        )
+        return {row["status"]: row["count"] for row in cursor.fetchall()}
 
     def close(self) -> None:
         """Close the database connection."""

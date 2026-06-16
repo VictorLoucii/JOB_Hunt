@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables (.env file).
-    
+
     Usage:
         settings = Settings()
         print(settings.openrouter_api_key)
@@ -91,7 +91,7 @@ class UserConstraints(BaseModel):
 class UserProfile:
     """
     User profile loaded from config.yaml.
-    
+
     Contains non-secret user information used for LLM prompt context.
     """
 
@@ -165,10 +165,33 @@ class UserProfile:
         constraints_data = self._data.get("user", {}).get("constraints", {})
         return UserConstraints(**constraints_data)
 
+    @property
+    def tone(self) -> str:
+        return str(self._data.get("user", {}).get("tone", "professional"))
+
+    @property
+    def prompt_version(self) -> str:
+        return str(self._data.get("llm", {}).get("prompt_version", "email_draft.txt"))
+
+    def validate(self) -> None:
+        """Validate that all essential configuration is present."""
+        missing = []
+        if not self.name: missing.append("user.name")
+        if not self.graduation: missing.append("user.graduation")
+        if not self.skills: missing.append("user.skills")
+
+        c = self.constraints
+        if not c.grad_date: missing.append("user.constraints.grad_date")
+        if not c.allowed_locations: missing.append("user.constraints.allowed_locations")
+        if not c.degree: missing.append("user.constraints.degree")
+
+        if missing:
+            raise ValueError(f"Invalid config.yaml. Missing required fields: {', '.join(missing)}")
+
     def to_prompt_context(self) -> str:
         """
         Format user profile as a string for LLM prompt injection.
-        
+
         Returns:
             Formatted string with user details for email personalization.
         """

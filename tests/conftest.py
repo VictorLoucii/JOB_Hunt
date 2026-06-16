@@ -19,7 +19,7 @@ import pytest
 def mock_settings() -> MagicMock:
     """
     Create a mock Settings object for tests that don't need real env vars.
-    
+
     Returns:
         MagicMock with common settings attributes pre-configured.
     """

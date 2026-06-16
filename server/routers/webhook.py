@@ -10,8 +10,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 from server.config import Settings, get_user_profile
 from server.dependencies import get_db, get_gmail_client, get_llm_client, get_settings
@@ -31,14 +33,15 @@ router = APIRouter()
 @router.post("/webhook")
 async def handle_webhook(
     payload: WebhookPayload,
+    background_tasks: BackgroundTasks,
     llm_client: LLMClient = Depends(get_llm_client),  # noqa: B008
     gmail_client: GmailClient = Depends(get_gmail_client),  # noqa: B008
     db: Database = Depends(get_db),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
-) -> dict[str, str]:
+) -> JSONResponse:
     """
     Handle incoming LinkedIn post from the browser.
-    
+
     1. Check for duplicates.
     2. Extract email.
     3. Generate draft.
@@ -49,7 +52,7 @@ async def handle_webhook(
     # 1. Deduplication Check
     if db.is_duplicate(content_hash=payload.content_hash):
         logger.info("Skipping duplicate post (hash match)")
-        return {"status": "skipped", "reason": "duplicate_post"}
+        return JSONResponse(status_code=200, content={"status": "skipped", "reason": "duplicate_post"})
 
     # 1.5. Eligibility Screening
     user_profile = get_user_profile()
@@ -71,7 +74,7 @@ async def handle_webhook(
             status=DraftStatus.SKIPPED,
             content_hash=payload.content_hash,
         )
-        return {"status": "skipped", "reason": "ineligible"}
+        return JSONResponse(status_code=200, content={"status": "skipped", "reason": "ineligible"})
 
     # 2. Email Extraction
     extracted_email = await extract_email(payload.selected_text, llm_client)
@@ -83,37 +86,58 @@ async def handle_webhook(
     # Check if we've already emailed this person.
     if db.is_duplicate(author_email=extracted_email.email):
         logger.info("Skipping duplicate recipient: %s", extracted_email.email)
-        return {"status": "skipped", "reason": "duplicate_recipient"}
+        return JSONResponse(status_code=200, content={"status": "skipped", "reason": "duplicate_recipient"})
 
-    # 3. Generate Draft
-    try:
-        draft = await llm_client.draft_email(payload.selected_text)
-    except Exception as e:
-        logger.error("Failed to generate draft: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to generate draft") from e
-
-    # Override the "To" email with the extracted one.
-    draft.to_email = extracted_email.email
-
-    # 4. Find Resume
+    # 3. Kick off Draft Generation and Gmail upload in the background
     resume_path = find_latest_resume(settings.resume_dir)
     resume_path_str = str(resume_path) if resume_path else None
 
-    # Construct the result object.
-    draft_result = DraftResult(
-        draft=draft,
+    # We add the background task to handle LLM drafting and Gmail API
+    background_tasks.add_task(
+        process_draft_background,
         post_text=payload.selected_text,
         page_url=payload.page_url,
         content_hash=payload.content_hash,
-        resume_path=resume_path_str,
         extracted_email=extracted_email,
+        resume_path_str=resume_path_str,
+        resume_path=resume_path,
+        llm_client=llm_client,
+        gmail_client=gmail_client,
+        db=db,
+        start_time=start_time,
     )
 
-    # 5. Draft directly to Gmail (Asynchronous workflow)
-    logger.info("Drafting to Gmail directly...")
+    # Return immediately so the browser UI isn't blocked
+    return JSONResponse(status_code=202, content={"status": "approved"})
+
+async def process_draft_background(
+    post_text: str,
+    page_url: str,
+    content_hash: str,
+    extracted_email: Any,
+    resume_path_str: str | None,
+    resume_path: Any | None,
+    llm_client: LLMClient,
+    gmail_client: GmailClient,
+    db: Database,
+    start_time: float,
+) -> None:
+    """Background task to generate draft and send to Gmail."""
     try:
-        # `create_draft` blocks, so run it in a thread if it's slow.
-        # To be safe and compliant with Code Quality rules, we use to_thread.
+        draft = await llm_client.draft_email(post_text)
+        draft.to_email = extracted_email.email or ""
+
+        draft_result = DraftResult(
+            draft=draft,
+            post_text=post_text,
+            page_url=page_url,
+            content_hash=content_hash,
+            resume_path=resume_path_str,
+            extracted_email=extracted_email,
+        )
+
+        logger.info("Drafting to Gmail directly...")
+        # `create_draft` blocks, so run it in a thread
         await asyncio.to_thread(
             gmail_client.create_draft,
             draft_result.draft,
@@ -126,13 +150,10 @@ async def handle_webhook(
             status=DraftStatus.DRAFTED,
             content_hash=draft_result.content_hash,
         )
-        
-        # Display the success log to the terminal
+
         elapsed_time = time.perf_counter() - start_time
         logger.info("\033[1;32m⏱️  [TIMER] Completed drafted email in %.2fs\033[0m", elapsed_time)
         display_draft_success_log(draft_result, elapsed_time)
-        
-        return {"status": "approved"}
+
     except Exception as e:
-        logger.error("Failed to create Gmail draft: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to create Gmail draft") from e
+        logger.error("Failed to process background draft: %s", e)

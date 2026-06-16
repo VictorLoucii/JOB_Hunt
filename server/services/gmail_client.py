@@ -186,7 +186,7 @@ class GmailClient:
         message = MIMEMultipart()
         message["to"] = draft.to_email
         message["subject"] = draft.subject
-        
+
         html_body = draft.body.replace("\n", "<br>")
         message.attach(MIMEText(html_body, "html"))
 

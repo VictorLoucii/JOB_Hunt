@@ -104,7 +104,7 @@ def test_webhook_valid_payload_pipeline_fires(mock_display, client):
         "content_hash": "hash123",
     })
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     assert response.json()["status"] == "approved"
     mock_display.assert_called_once()
 

@@ -22,7 +22,7 @@ console = Console()
 def display_eligibility_rejection_log(post_text: str, result: EligibilityResult) -> None:
     """
     Display a log when a post is rejected during the eligibility screening.
-    
+
     Args:
         post_text: Original LinkedIn post text.
         result: The EligibilityResult containing the reasoning.
@@ -36,7 +36,7 @@ def display_eligibility_rejection_log(post_text: str, result: EligibilityResult)
 
     logger.info("🔍 Analyzing post for eligibility: \"%s\"", post_preview)
     logger.info("❌ Post skipped. Eligibility criteria not met.")
-    
+
     # We use rich to print the reason with the arrow as requested
     console.print(f"       [yellow]↳ Reason:[/yellow] {result.reasoning}")
 
@@ -44,7 +44,7 @@ def display_eligibility_rejection_log(post_text: str, result: EligibilityResult)
 def display_draft_success_log(result: DraftResult, elapsed_time: float | None = None) -> None:
     """
     Display a read-only, non-blocking summary of the successfully drafted email.
-    
+
     Args:
         result: The DraftResult containing the post, draft, and metadata.
         elapsed_time: The time taken to process the email.
@@ -66,7 +66,7 @@ def display_draft_success_log(result: DraftResult, elapsed_time: float | None = 
 
     # 2. Email Draft Panel
     draft_content = Text()
-    
+
     # Highlight if email is missing
     if not result.draft.to_email:
         draft_content.append("To: ", style="bold red")
@@ -74,10 +74,10 @@ def display_draft_success_log(result: DraftResult, elapsed_time: float | None = 
     else:
         draft_content.append("To: ", style="bold green")
         draft_content.append(f"{result.draft.to_email}\n")
-        
+
     draft_content.append("Subject: ", style="bold green")
     draft_content.append(f"{result.draft.subject}\n\n")
-    
+
     # Strip HTML tags for clean terminal viewing
     clean_body = result.draft.body.replace("<b>", "").replace("</b>", "")
     # Only show the first few lines of the body to keep the terminal clean
@@ -85,7 +85,7 @@ def display_draft_success_log(result: DraftResult, elapsed_time: float | None = 
     body_preview = "\n".join(body_lines[:5])
     if len(body_lines) > 5:
         body_preview += "\n\n[dim]...(draft truncated, view full in Gmail)[/dim]"
-    
+
     draft_content.append(body_preview)
 
     console.print(
@@ -103,7 +103,7 @@ def display_draft_success_log(result: DraftResult, elapsed_time: float | None = 
     metadata_content = f"📎 [bold]Attached Resume:[/bold] {resume_text}\n"
     if elapsed_time is not None:
         metadata_content += f"⏱️  [bold]Time Taken:[/bold] {elapsed_time:.2f}s\n"
-    metadata_content += f"✅ [bold]Status:[/bold] Ready for your review in Gmail Drafts."
+    metadata_content += "✅ [bold]Status:[/bold] Ready for your review in Gmail Drafts."
 
     console.print(
         Panel(

@@ -8,6 +8,7 @@ dependency injection setup, and router registration.
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Manage application startup and shutdown.
-    
+
     Startup:
       1. Load settings and user profile.
       2. Set log level.
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       4. Initialize and authenticate Gmail API (blocking!).
       5. Initialize LLM API.
       6. Store in app.state.
-      
+
     Shutdown:
       1. Close LLM client.
       2. Close database.
@@ -51,6 +52,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     settings = get_settings()
     user_profile = get_user_profile()
+
+    # Validate configuration on startup
+    user_profile.validate()
 
     # Adjust log level based on config.
     logging.getLogger().setLevel(settings.log_level)
@@ -108,6 +112,11 @@ app.include_router(webhook.router)
 
 def start() -> None:
     """Entry point for the jobhunt CLI command."""
+    if len(sys.argv) > 1 and sys.argv[1] == "stats":
+        from server.cli import show_stats
+        show_stats()
+        return
+
     settings = get_settings()
     uvicorn.run(
         "server.main:app",

@@ -99,9 +99,16 @@ class LLMClient:
         )
 
         # Load the system prompt once at init.
-        prompt_path = PROJECT_ROOT / "prompts" / "email_draft.txt"
+        prompt_version = user_profile.prompt_version
+        prompt_path = PROJECT_ROOT / "prompts" / "versions" / prompt_version
+        if not prompt_path.exists():
+            prompt_path = PROJECT_ROOT / "prompts" / "email_draft.txt"
         self._system_prompt = self._load_prompt(prompt_path)
-        logger.info("LLMClient initialized with model: %s", user_profile.llm_model)
+        logger.info(
+            "LLMClient initialized with model: %s, prompt: %s",
+            user_profile.llm_model,
+            prompt_path.name,
+        )
 
     @staticmethod
     def _load_prompt(path: Path) -> str:
@@ -131,7 +138,8 @@ class LLMClient:
         profile_context = self._user_profile.to_prompt_context()
         user_message = (
             f"## LinkedIn Post\n{post_text}\n\n"
-            f"## My Profile\n{profile_context}"
+            f"## My Profile\n{profile_context}\n\n"
+            f"## Tone\nKeep the email tone: {self._user_profile.tone}"
         )
 
         payload = {
@@ -188,7 +196,7 @@ class LLMClient:
         excluded = constraints.excluded_role_types
         excluded_roles_str = ", ".join(excluded) if excluded else "None"
         current_date_str = datetime.now(UTC).strftime("%B %Y")
-        
+
         prompt = _ELIGIBILITY_PROMPT.format(
             locations=locations_str,
             max_exp=constraints.max_experience_required_years,
@@ -262,7 +270,7 @@ class LLMClient:
         result = raw_content.strip()
 
         if result.upper() == "NONE" or not result:
-            logger.info("LLM extraction returned no email in %.2fs" % duration)
+            logger.info("LLM extraction returned no email in %.2fs", duration)
             return None
 
         logger.info("LLM extracted email in %.2fs: %s", duration, result)
