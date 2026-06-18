@@ -82,6 +82,7 @@ class Settings(BaseSettings):
 class UserConstraints(BaseModel):
     """User's hard constraints for job applications."""
     allowed_locations: list[str] = Field(default_factory=list)
+    excluded_locations: list[str] = Field(default_factory=list)
     max_experience_required_years: int = Field(default=0)
     grad_date: str = Field(default="")
     degree: str = Field(default="")
@@ -176,14 +177,20 @@ class UserProfile:
     def validate(self) -> None:
         """Validate that all essential configuration is present."""
         missing = []
-        if not self.name: missing.append("user.name")
-        if not self.graduation: missing.append("user.graduation")
-        if not self.skills: missing.append("user.skills")
+        if not self.name:
+            missing.append("user.name")
+        if not self.graduation:
+            missing.append("user.graduation")
+        if not self.skills:
+            missing.append("user.skills")
 
         c = self.constraints
-        if not c.grad_date: missing.append("user.constraints.grad_date")
-        if not c.allowed_locations: missing.append("user.constraints.allowed_locations")
-        if not c.degree: missing.append("user.constraints.degree")
+        if not c.grad_date:
+            missing.append("user.constraints.grad_date")
+        if not c.allowed_locations:
+            missing.append("user.constraints.allowed_locations")
+        if not c.degree:
+            missing.append("user.constraints.degree")
 
         if missing:
             raise ValueError(f"Invalid config.yaml. Missing required fields: {', '.join(missing)}")

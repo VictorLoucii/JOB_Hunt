@@ -8,6 +8,7 @@ Async HTTP client for the OpenRouter API. Handles two types of calls:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -49,15 +50,37 @@ Rules:
 3. Strict Matching: Only reject (is_eligible: False) if the post explicitly uses
    exclusionary language (e.g., "Must have", "Required", "Strictly on-site") that
    conflicts with the user's constraints.
-4. Education Status: Consider the candidate's Graduation Date relative to the Current Date. If the current date is the same month/year or later, the candidate HAS ALREADY graduated and possesses the degree. Also, if a role accepts "Pursuing or recently completed", then either students or recent grads are eligible.
-5. Remote Geopolitics: If a role is "Remote" but explicitly restricted to a country outside of India or the US (e.g., "Remote (Pakistan)", "Remote - UK only"), you MUST reject it (is_eligible: False) unless that specific country is in the Allowed Locations list.
-6. Job Post Validation: If the text provided is just an informational article, thought-leadership post, or discussion (NOT a job or internship listing), you MUST reject it (is_eligible: False).
-7. Excluded Roles: Reject if the post ONLY offers roles that are primarily focused on the Excluded Role Types (e.g., Sales, Marketing, Outreach, Research, Consultant), even if they have 'AI' in the title. If the post lists multiple roles and AT LEAST ONE role is NOT an excluded type, do NOT reject the post.
-8. Paid-Only Filter: Reject any role that explicitly states compensation is 100% commission or performance-based.
-9. Recruiter vs Candidate: If the post is written by a candidate looking for a job or internship (e.g., "Currently looking for opportunities"), rather than a recruiter or hiring manager offering a position, you MUST reject it (is_eligible: false) and state the reasoning clearly (e.g., "Poster is a candidate seeking a role, not a recruiter").
+4. Education Status: Consider the candidate's Graduation Date relative to the Current Date.
+   If the current date is the same month/year or later, the candidate HAS ALREADY graduated
+   and possesses the degree. Also, if a role accepts "Pursuing or recently completed", then
+   either students or recent grads are eligible.
+5. Remote Geopolitics: If a role is "Remote" but explicitly restricted to a country outside
+   of India or the US (e.g., "Remote (Pakistan)", "Remote - UK only"), you MUST reject it
+   (is_eligible: False) unless that specific country is in the Allowed Locations list.
+6. Job Post Validation: If the text provided is just an informational article, thought-leadership
+   post, or discussion (NOT a job or internship listing), you MUST reject it (is_eligible: False).
+7. Excluded Roles: Reject if the post ONLY offers roles that are primarily focused on the
+   Excluded Role Types (e.g., Sales, Marketing, Outreach, Research, Consultant), even if they
+   have 'AI' in the title. If the post lists multiple roles and AT LEAST ONE role is NOT an
+   excluded type, do NOT reject the post.
+8. Paid-Only Filter: Reject any role that explicitly states the position is "unpaid", "volunteer",
+   "no stipend", "100% commission", "performance-based", or if the stipend/compensation is
+   "based on performance". If any of these are mentioned, you MUST reject it (is_eligible: False).
+9. Recruiter vs Candidate: If the post is written by a candidate looking for a job or internship
+   (e.g., "Currently looking for opportunities"), rather than a recruiter or hiring manager
+   offering a position, you MUST reject it (is_eligible: false) and state the reasoning clearly
+   (e.g., "Poster is a candidate seeking a role, not a recruiter").
+10. Location Matching: If the job location (e.g., Bangalore) is listed in the candidate's
+    Allowed Locations, you MUST consider the candidate eligible for that location, REGARDLESS
+    of whether the role is "Onsite", "Hybrid", or "Remote". Do not reject a role just because
+    it is "Onsite" if the geographic city is allowed.
+11. Excluded Locations: Reject any role (is_eligible: False) if ANY of the job's listed
+    locations match the Candidate's Excluded Locations, even if other allowed locations
+    are also mentioned.
 
 Candidate Constraints:
 Allowed Locations: {locations}
+Excluded Locations: {excluded_locs}
 Max Experience Required: {max_exp} years
 Graduation Date: {grad_date}
 Degree: {degree}
@@ -154,24 +177,26 @@ class LLMClient:
         }
 
         start_time = time.perf_counter()
-        raw_content = await self._call_api(payload)
+
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            raw_content = await self._call_api(payload)
+            try:
+                parsed = json.loads(raw_content)
+                draft = EmailDraft.model_validate(parsed)
+                break
+            except Exception as e:
+                logger.warning("Draft generation failed on attempt %d: %s", attempt, e)
+                if attempt == max_retries:
+                    logger.error(
+                        "Failed to parse or validate LLM JSON response after %d attempts.\nRaw: %s",
+                        max_retries,
+                        raw_content,
+                    )
+                    raise LLMError(f"LLM response failed validation: {e}") from e
+                await asyncio.sleep(1)  # Brief pause before retrying
+
         duration = time.perf_counter() - start_time
-
-        # Parse and validate.
-        try:
-            parsed = json.loads(raw_content)
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse LLM JSON response: %s\nRaw: %s", e, raw_content)
-            raise LLMError(f"Invalid JSON from LLM: {e}") from e
-
-        try:
-            draft = EmailDraft.model_validate(parsed)
-        except Exception as e:
-            logger.error(
-                "Pydantic validation failed for LLM response: %s\nParsed: %s", e, parsed
-            )
-            raise LLMError(f"LLM response failed validation: {e}") from e
-
         logger.info("Email draft generated in %.2fs — subject: %s", duration, draft.subject)
         return draft
 
@@ -193,12 +218,15 @@ class LLMClient:
         """
         locs = constraints.allowed_locations
         locations_str = ", ".join(locs) if locs else "Any"
+        excluded_locs = constraints.excluded_locations
+        excluded_locs_str = ", ".join(excluded_locs) if excluded_locs else "None"
         excluded = constraints.excluded_role_types
         excluded_roles_str = ", ".join(excluded) if excluded else "None"
         current_date_str = datetime.now(UTC).strftime("%B %Y")
 
         prompt = _ELIGIBILITY_PROMPT.format(
             locations=locations_str,
+            excluded_locs=excluded_locs_str,
             max_exp=constraints.max_experience_required_years,
             grad_date=constraints.grad_date,
             degree=constraints.degree,
@@ -213,28 +241,31 @@ class LLMClient:
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.0,  # Deterministic for screening
-            "max_tokens": 500,
+            "max_tokens": 1024,
             "response_format": {"type": "json_object"},
         }
 
         start_time = time.perf_counter()
-        raw_content = await self._call_api(payload)
+
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            raw_content = await self._call_api(payload)
+            try:
+                parsed = json.loads(raw_content)
+                result = EligibilityResult.model_validate(parsed)
+                break
+            except Exception as e:
+                logger.warning("Eligibility evaluation failed on attempt %d: %s", attempt, e)
+                if attempt == max_retries:
+                    logger.error(
+                        "Failed to parse or validate LLM JSON response after %d attempts.\nRaw: %s",
+                        max_retries,
+                        raw_content,
+                    )
+                    raise LLMError(f"LLM response failed validation: {e}") from e
+                await asyncio.sleep(1)  # Brief pause before retrying
+
         duration = time.perf_counter() - start_time
-
-        try:
-            parsed = json.loads(raw_content)
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse LLM JSON response: %s\nRaw: %s", e, raw_content)
-            raise LLMError(f"Invalid JSON from LLM: {e}") from e
-
-        try:
-            result = EligibilityResult.model_validate(parsed)
-        except Exception as e:
-            logger.error(
-                "Pydantic validation failed for LLM response: %s\nParsed: %s", e, parsed
-            )
-            raise LLMError(f"LLM response failed validation: {e}") from e
-
         logger.info("Eligibility evaluated in %.2fs — eligible: %s", duration, result.is_eligible)
         return result
 

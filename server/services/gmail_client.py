@@ -46,6 +46,7 @@ class GmailClient:
         """
         self._settings = settings
         self._service: Any = None
+        self._creds: Credentials | None = None
         logger.info("GmailClient initialized (not yet authenticated)")
 
     @property
@@ -101,6 +102,7 @@ class GmailClient:
                     token_file.write(creds.to_json())
                 logger.info("Saved token to %s", token_path)
 
+            self._creds = creds
             self._service = build("gmail", "v1", credentials=creds)
             logger.info("Gmail API authenticated successfully")
 
@@ -135,6 +137,10 @@ class GmailClient:
         """
         self._ensure_authenticated()
 
+        # Create a fresh service instance to avoid thread-safety issues
+        # and stale httplib2 connections (Broken pipe) after long idle times.
+        service = build("gmail", "v1", credentials=self._creds)
+
         try:
             if resume_path and resume_path.exists():
                 raw_message = self._build_message_with_attachment(draft, resume_path)
@@ -149,7 +155,7 @@ class GmailClient:
 
             body = {"message": {"raw": raw_message}}
             result = (
-                self._service.users()
+                service.users()
                 .drafts()
                 .create(userId="me", body=body)
                 .execute()
