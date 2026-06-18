@@ -26,6 +26,7 @@ LinkedIn Post → Select Text → Cmd+Shift+X → Local Server → Eligibility S
 - **Zero-Risk Extraction:** Uses native `window.getSelection()` and a keyboard shortcut instead of DOM injection, ensuring zero ban risk on LinkedIn.
 - **Robust Email Extraction:** Two-stage pipeline uses regex for standard emails and LLM fallback for obfuscated emails (e.g., `user [at] company [dot] com`).
 - **Seamless Asynchronous Flow:** Bypasses terminal confirmation prompts, immediately drafting to Gmail for a faster, less disruptive workflow.
+- **Resilient API & Client Connections:** Dynamically recreates Gmail API services to prevent stale `httplib2` "Broken pipe" issues and utilizes a 3-attempt retry loop to handle intermittent truncated OpenRouter responses.
 - **Smart Deduplication:** Local SQLite database tracks processed posts and emailed authors to prevent duplicate outreach.
 - **Automated Resume Attachment:** Automatically finds and attaches the latest PDF resume from your configured directory.
 - **Automatic LLM Fallback:** Configures a fallback chain (e.g. DeepSeek with Gemini 2.5 Flash fallback) to automatically recover from rate limits (429 errors) or model downtime.
@@ -66,6 +67,7 @@ cp .env.example .env
      # ... profile data ...
      constraints:
        allowed_locations: ["Delhi", "Delhi NCR", "Gurgaon", "Noida", "Bangalore", "Remote"]
+       excluded_locations: ["Kolkata"]
        max_experience_required_years: 1
        grad_date: "June 2026"
        degree: "BSc(H) Computer Science"
