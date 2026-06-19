@@ -30,6 +30,7 @@ Your generated email body MUST strictly follow this exact structure and formatti
 2. Match the "Requirements Mapping" bullet points explicitly to the requirements listed in the LinkedIn post using the applicant's actual skills.
 3. Do NOT hallucinate skills the applicant does not have.
 4. Keep the tone professional, concise, and highly relevant.
+5. **Subject Line**: If the LinkedIn post explicitly requests a specific subject line format (e.g., "Subject: Role - Your Name"), you MUST use that exact format and replace any placeholders with the applicant's details. Otherwise, use the default format shown in the output JSON.
 
 ## Input Format
 You will receive:

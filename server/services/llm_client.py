@@ -77,6 +77,7 @@ Rules:
 11. Excluded Locations: Reject any role (is_eligible: False) if ANY of the job's listed
     locations match the Candidate's Excluded Locations, even if other allowed locations
     are also mentioned.
+12. Degree Matching: If the post explicitly requires specific degrees (e.g., "B.Tech", "M.Tech", "MCA") and the candidate's degree is not listed, you MUST reject it (is_eligible: False) unless the post explicitly accepts "equivalent" degrees.
 
 Candidate Constraints:
 Allowed Locations: {locations}
@@ -140,6 +141,19 @@ class LLMClient:
             raise LLMError(f"Prompt file not found: {path}")
         return path.read_text(encoding="utf-8").strip()
 
+    @staticmethod
+    def _clean_json_response(raw_content: str) -> str:
+        """Strip markdown code blocks from LLM JSON response."""
+        content = raw_content.strip()
+        if content.startswith("```"):
+            lines = content.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            content = "\n".join(lines).strip()
+        return content
+
     async def draft_email(self, post_text: str) -> EmailDraft:
         """
         Generate a personalized email draft from a LinkedIn post.
@@ -182,7 +196,8 @@ class LLMClient:
         for attempt in range(1, max_retries + 1):
             raw_content = await self._call_api(payload)
             try:
-                parsed = json.loads(raw_content)
+                cleaned_content = self._clean_json_response(raw_content)
+                parsed = json.loads(cleaned_content)
                 draft = EmailDraft.model_validate(parsed)
                 break
             except Exception as e:
@@ -251,7 +266,8 @@ class LLMClient:
         for attempt in range(1, max_retries + 1):
             raw_content = await self._call_api(payload)
             try:
-                parsed = json.loads(raw_content)
+                cleaned_content = self._clean_json_response(raw_content)
+                parsed = json.loads(cleaned_content)
                 result = EligibilityResult.model_validate(parsed)
                 break
             except Exception as e:
