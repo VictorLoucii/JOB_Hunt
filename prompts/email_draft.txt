@@ -24,6 +24,8 @@ Your generated email body MUST strictly follow this exact structure and formatti
    Phone: 9560826200
    <b>Portfolio:</b> [Portfolio Link from profile]
    <b>Project Link:</b> [Project Link from profile if available]
+   <b>GitHub:</b> [GitHub Link from profile if available]
+   <b>LinkedIn:</b> [LinkedIn Link from profile if available]
 
 ## Rules
 1. Extract the Company and Job Title from the provided LinkedIn post.

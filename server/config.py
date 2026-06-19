@@ -146,6 +146,10 @@ class UserProfile:
         return self._data.get("user", {}).get("project_link", "")
 
     @property
+    def github(self) -> str:
+        return self._data.get("user", {}).get("github", "")
+
+    @property
     def llm_model(self) -> str:
         return self._data.get("llm", {}).get("model", "deepseek/deepseek-chat")
 
@@ -211,7 +215,8 @@ class UserProfile:
             f"Skills: {skills_str}\n"
             f"LinkedIn: {self.linkedin}\n"
             f"Portfolio: {self.portfolio}\n"
-            f"Project Link: {self.project_link}"
+            f"Project Link: {self.project_link}\n"
+            f"GitHub: {self.github}"
         )
 
 
