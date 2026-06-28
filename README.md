@@ -2,6 +2,8 @@
 
 A cost-effective, semi-automated agentic workflow that drafts highly personalized internship/job application emails from LinkedIn posts.
 
+![JobHunt Demo](assets/JOB_Hunt_Demo.gif)
+
 ## How It Works
 
 ```
