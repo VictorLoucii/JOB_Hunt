@@ -178,6 +178,13 @@ class UserProfile:
     def prompt_version(self) -> str:
         return str(self._data.get("llm", {}).get("prompt_version", "email_draft.txt"))
 
+    @property
+    def resume_dir(self) -> Path | None:
+        dir_str = self._data.get("resume", {}).get("dir", "")
+        if dir_str:
+            return Path(dir_str).expanduser()
+        return None
+
     def validate(self) -> None:
         """Validate that all essential configuration is present."""
         missing = []

@@ -52,7 +52,9 @@ async def handle_webhook(
     # 1. Deduplication Check
     if db.is_duplicate(content_hash=payload.content_hash):
         logger.info("Skipping duplicate post (hash match)")
-        return JSONResponse(status_code=200, content={"status": "skipped", "reason": "duplicate_post"})
+        return JSONResponse(
+            status_code=200, content={"status": "skipped", "reason": "duplicate_post"}
+        )
 
     # 1.5. Eligibility Screening
     user_profile = get_user_profile()
@@ -86,10 +88,13 @@ async def handle_webhook(
     # Check if we've already emailed this person.
     if db.is_duplicate(author_email=extracted_email.email):
         logger.info("Skipping duplicate recipient: %s", extracted_email.email)
-        return JSONResponse(status_code=200, content={"status": "skipped", "reason": "duplicate_recipient"})
+        return JSONResponse(
+            status_code=200, content={"status": "skipped", "reason": "duplicate_recipient"}
+        )
 
     # 3. Kick off Draft Generation and Gmail upload in the background
-    resume_path = find_latest_resume(settings.resume_dir)
+    resume_dir = user_profile.resume_dir or settings.resume_dir
+    resume_path = find_latest_resume(resume_dir)
     resume_path_str = str(resume_path) if resume_path else None
 
     # We add the background task to handle LLM drafting and Gmail API
@@ -109,6 +114,7 @@ async def handle_webhook(
 
     # Return immediately so the browser UI isn't blocked
     return JSONResponse(status_code=202, content={"status": "approved"})
+
 
 async def process_draft_background(
     post_text: str,
