@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/pytest)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(.venv/bin/ruff check)",
+      "Bash(.venv/bin/ruff check *)",
+      "Bash(.venv/bin/ruff format --check *)",
+      "Bash(.venv/bin/mypy server)",
+      "Bash(.venv/bin/mypy *)"
+    ],
+    "ask": [
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python -m pip install *)",
+      "Bash(uv add *)",
+      "Bash(uv pip install *)"
+    ],
+    "deny": [
+      "Read(/.env)",
+      "Read(/config.yaml)",
+      "Read(/credentials/**)",
+      "Read(/AI_RESUME/**)",
+      "Read(/data/jobhunt.db)",
+      "Read(/data/jobhunt.db-journal)",
+      "Read(/data/jobhunt.db-wal)",
+      "Read(/data/jobhunt.db-shm)",
+      "Edit(/.env)",
+      "Edit(/config.yaml)",
+      "Edit(/credentials/**)",
+      "Edit(/AI_RESUME/**)",
+      "Edit(/data/jobhunt.db)",
+      "Edit(/data/jobhunt.db-journal)",
+      "Edit(/data/jobhunt.db-wal)",
+      "Edit(/data/jobhunt.db-shm)",
+      "Bash(git add .)",
+      "Bash(git add . *)",
+      "Bash(git add -A*)",
+      "Bash(git add --all*)",
+      "Bash(git add * -A*)",
+      "Bash(git add * --all*)",
+      "Bash(git -C * add *)",
+      "Bash(git commit -a*)",
+      "Bash(git commit --all*)",
+      "Bash(git commit * -a)",
+      "Bash(git commit * -a *)",
+      "Bash(git commit * --all*)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": [
+      "bash ~/.claude/scripts/notify.sh *",
+      "bash /Users/victorloucii/.claude/scripts/notify.sh *"
+    ]
+  }
+}

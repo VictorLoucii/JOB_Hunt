@@ -89,11 +89,12 @@ cp .env.example .env
 
 ### Gmail OAuth Setup
 
-If you haven't completed the OAuth flow yet:
+The server signs in to Gmail when it starts. If there is no valid token yet,
+it opens a browser window for Google sign-in:
 
 ```bash
-# This will open a browser window for Google sign-in
-python -m server.services.gmail_client --auth
+# Start the server; the first start opens a browser window for Google sign-in
+jobhunt
 ```
 
 After signing in and granting permissions, `token.json` will be saved to `credentials/`.
