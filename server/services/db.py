@@ -7,6 +7,7 @@ Zero cost, zero setup — just a file.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import sqlite3
 from datetime import UTC, datetime
@@ -70,16 +71,17 @@ class Database:
             self._conn.execute(_CREATE_TABLE_SQL)
 
             # Migration: Add content_hash if it doesn't exist (for existing DBs)
-            try:
+            with contextlib.suppress(sqlite3.OperationalError):  # Column already exists
                 self._conn.execute("ALTER TABLE drafts ADD COLUMN content_hash TEXT")
-            except sqlite3.OperationalError:
-                pass  # Column already exists
 
             for index_sql in _CREATE_INDEXES_SQL:
                 self._conn.execute(index_sql)
 
     def is_duplicate(
-        self, content_hash: str | None = None, author_email: str | None = None, page_url: str | None = None
+        self,
+        content_hash: str | None = None,
+        author_email: str | None = None,
+        page_url: str | None = None,
     ) -> bool:
         """
         Check if we've already processed this post or emailed this person.
@@ -91,7 +93,8 @@ class Database:
         Args:
             content_hash: The content hash of the selected text to check.
             author_email: The recipient email to check.
-            page_url: The LinkedIn post URL (kept for backward compatibility, but not used for blocking).
+            page_url: The LinkedIn post URL (kept for backward compatibility,
+                but not used for blocking).
 
         Returns:
             True if this is a duplicate, False otherwise.
@@ -106,7 +109,8 @@ class Database:
                 logger.info("Duplicate detected — same content hash.")
                 return True
 
-        # Check 2: Same email, but only if we already approved/sent to them (and email is not empty).
+        # Check 2: Same email, but only if we already approved/sent to them
+        # (and email is not empty).
         if author_email and author_email.strip():
             cursor = self._conn.execute(
                 "SELECT 1 FROM drafts WHERE author_email = ? AND status = 'approved' LIMIT 1",
@@ -141,7 +145,8 @@ class Database:
         now = datetime.now(UTC).isoformat()
         with self._conn:
             cursor = self._conn.execute(
-                "INSERT INTO drafts (page_url, author_email, subject, status, created_at, content_hash) "
+                "INSERT INTO drafts "
+                "(page_url, author_email, subject, status, created_at, content_hash) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (page_url, author_email, subject, status.value, now, content_hash),
             )

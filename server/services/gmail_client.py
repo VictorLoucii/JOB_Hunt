@@ -76,14 +76,16 @@ class GmailClient:
         try:
             # 1. Try loading existing token.
             if token_path.exists():
-                creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+                creds = Credentials.from_authorized_user_file(  # type: ignore[no-untyped-call]
+                    str(token_path), SCOPES
+                )
                 logger.info("Loaded existing token from %s", token_path)
 
             # 2. Refresh or re-authenticate.
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
                     logger.info("Refreshing expired token")
-                    creds.refresh(Request())
+                    creds.refresh(Request())  # type: ignore[no-untyped-call]
                 else:
                     if not creds_path.exists():
                         raise GmailError(
@@ -137,11 +139,11 @@ class GmailClient:
         """
         self._ensure_authenticated()
 
-        # Create a fresh service instance to avoid thread-safety issues
-        # and stale httplib2 connections (Broken pipe) after long idle times.
-        service = build("gmail", "v1", credentials=self._creds)
-
         try:
+            # Create a fresh service instance to avoid thread-safety issues
+            # and stale httplib2 connections (Broken pipe) after long idle times.
+            service = build("gmail", "v1", credentials=self._creds)
+
             if resume_path and resume_path.exists():
                 raw_message = self._build_message_with_attachment(draft, resume_path)
                 logger.info("Creating draft with resume attachment: %s", resume_path.name)
@@ -161,7 +163,7 @@ class GmailClient:
                 .execute()
             )
 
-            draft_id = result["id"]
+            draft_id: str = result["id"]
             logger.info("Gmail draft created — ID: %s", draft_id)
             return draft_id
 

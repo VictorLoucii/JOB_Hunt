@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from server.config import UserConstraints
 from server.dependencies import get_db, get_gmail_client, get_llm_client, get_settings
 from server.main import app
 from server.models import DraftStatus, EligibilityResult, EmailDraft
@@ -24,9 +25,12 @@ def mock_db():
     return db
 
 @pytest.fixture
-def client(mock_db, mock_settings):
+def client(mock_db, mock_settings, mock_user_profile, tmp_path):
     mock_llm = MagicMock()
+    mock_llm.close = AsyncMock()
     mock_gmail = MagicMock()
+    mock_user_profile.constraints = UserConstraints(allowed_locations=["Delhi"])
+    mock_user_profile.resume_dir = tmp_path
 
     app.dependency_overrides[get_db] = lambda: mock_db
     app.dependency_overrides[get_settings] = lambda: mock_settings
@@ -42,7 +46,14 @@ def client(mock_db, mock_settings):
         reasoning="Eligible by default",
     ))
 
-    with TestClient(app) as c:
+    # TestClient runs the real lifespan, so fake every client it builds.
+    with patch("server.main.get_settings", return_value=mock_settings), \
+         patch("server.main.get_user_profile", return_value=mock_user_profile), \
+         patch("server.routers.webhook.get_user_profile", return_value=mock_user_profile), \
+         patch("server.main.Database", return_value=mock_db), \
+         patch("server.main.GmailClient", return_value=mock_gmail), \
+         patch("server.main.LLMClient", return_value=mock_llm), \
+         TestClient(app) as c:
         yield c, mock_llm, mock_gmail, mock_db
 
     app.dependency_overrides.clear()

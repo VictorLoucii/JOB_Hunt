@@ -77,11 +77,17 @@ class EligibilityResult(BaseModel):
 
     hard_requirements_found: list[str] = Field(
         ...,
-        description="Strict dealbreakers mentioned in the post (e.g., 'Must have 5 years experience', 'Requires US Citizenship').",
+        description=(
+            "Strict dealbreakers mentioned in the post "
+            "(e.g., 'Must have 5 years experience', 'Requires US Citizenship')."
+        ),
     )
     soft_requirements_found: list[str] = Field(
         ...,
-        description="Nice-to-haves or preferred qualifications (e.g., 'Master's preferred', 'Bonus points for AWS').",
+        description=(
+            "Nice-to-haves or preferred qualifications "
+            "(e.g., 'Master's preferred', 'Bonus points for AWS')."
+        ),
     )
     candidate_matches_hard_requirements: bool = Field(
         ...,
@@ -89,7 +95,10 @@ class EligibilityResult(BaseModel):
     )
     reasoning: str = Field(
         ...,
-        description="Short explanation of why the candidate is or isn't eligible based ONLY on hard requirements.",
+        description=(
+            "Short explanation of why the candidate is or isn't eligible "
+            "based ONLY on hard requirements."
+        ),
     )
     is_eligible: bool = Field(
         ...,
@@ -113,7 +122,7 @@ class EmailDraft(BaseModel):
         if not isinstance(v, str):
             v = str(v)
 
-        v_stripped = v.strip()
+        v_stripped: str = v.strip()
         # Just return the string. If it's totally invalid, the webhook overrides it
         # with the extracted/manual email before sending to Gmail.
         if not v_stripped or v_stripped.startswith("[") or EMAIL_REGEX.match(v_stripped):

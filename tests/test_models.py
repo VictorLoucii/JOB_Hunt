@@ -154,7 +154,10 @@ class TestEmailDraft:
         assert draft.to_email == "hire@company.com"
 
     def test_invalid_to_email_sanitized(self) -> None:
-        """Invalid to_email (non-empty, non-placeholder, bad format) should be sanitized to empty string."""
+        """
+        Invalid to_email (non-empty, non-placeholder, bad format) should be sanitized
+        to empty string.
+        """
         draft = EmailDraft(
             to_email="not-valid",
             subject="Test",

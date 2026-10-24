@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
 
     @field_validator("resume_dir", mode="before")
     @classmethod
-    def expand_resume_dir(cls, v: Any) -> Path:
+    def expand_resume_dir(cls, v: Any) -> Any:
         """Expand ~ in resume directory path."""
         if isinstance(v, str):
             return Path(v).expanduser()
@@ -115,55 +115,55 @@ class UserProfile:
 
     @property
     def name(self) -> str:
-        return self._data.get("user", {}).get("name", "")
+        return cast(str, self._data.get("user", {}).get("name", ""))
 
     @property
     def university(self) -> str:
-        return self._data.get("user", {}).get("university", "")
+        return cast(str, self._data.get("user", {}).get("university", ""))
 
     @property
     def major(self) -> str:
-        return self._data.get("user", {}).get("major", "")
+        return cast(str, self._data.get("user", {}).get("major", ""))
 
     @property
     def graduation(self) -> str:
-        return self._data.get("user", {}).get("graduation", "")
+        return cast(str, self._data.get("user", {}).get("graduation", ""))
 
     @property
     def skills(self) -> list[str]:
-        return self._data.get("user", {}).get("skills", [])
+        return cast(list[str], self._data.get("user", {}).get("skills", []))
 
     @property
     def linkedin(self) -> str:
-        return self._data.get("user", {}).get("linkedin", "")
+        return cast(str, self._data.get("user", {}).get("linkedin", ""))
 
     @property
     def portfolio(self) -> str:
-        return self._data.get("user", {}).get("portfolio", "")
+        return cast(str, self._data.get("user", {}).get("portfolio", ""))
 
     @property
     def project_link(self) -> str:
-        return self._data.get("user", {}).get("project_link", "")
+        return cast(str, self._data.get("user", {}).get("project_link", ""))
 
     @property
     def github(self) -> str:
-        return self._data.get("user", {}).get("github", "")
+        return cast(str, self._data.get("user", {}).get("github", ""))
 
     @property
     def llm_model(self) -> str:
-        return self._data.get("llm", {}).get("model", "deepseek/deepseek-chat")
+        return cast(str, self._data.get("llm", {}).get("model", "deepseek/deepseek-chat"))
 
     @property
     def llm_fallback_models(self) -> list[str]:
-        return self._data.get("llm", {}).get("fallback_models", [])
+        return cast(list[str], self._data.get("llm", {}).get("fallback_models", []))
 
     @property
     def llm_temperature(self) -> float:
-        return self._data.get("llm", {}).get("temperature", 0.7)
+        return cast(float, self._data.get("llm", {}).get("temperature", 0.7))
 
     @property
     def llm_max_tokens(self) -> int:
-        return self._data.get("llm", {}).get("max_tokens", 1024)
+        return cast(int, self._data.get("llm", {}).get("max_tokens", 1024))
 
     @property
     def constraints(self) -> UserConstraints:

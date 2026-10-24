@@ -14,6 +14,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -70,13 +71,16 @@ Rules:
    (e.g., "Currently looking for opportunities"), rather than a recruiter or hiring manager
    offering a position, you MUST reject it (is_eligible: false) and state the reasoning clearly
    (e.g., "Poster is a candidate seeking a role, not a recruiter").
-10. Location Matching: If the job location (e.g., Nashik) is geographically located within ANY of the
-    candidate's Allowed Locations (e.g., Maharashtra), you MUST consider the candidate eligible for that
-    location, REGARDLESS of whether the role is "Onsite", "Hybrid", or "Remote". Use your internal
-    geographic knowledge to determine if a specific city falls under a broader allowed state or region.
+10. Location Matching: If the job location (e.g., Nashik) is geographically located within ANY of
+    the candidate's Allowed Locations (e.g., Maharashtra), you MUST consider the candidate eligible
+    for that location, REGARDLESS of whether the role is "Onsite", "Hybrid", or "Remote". Use your
+    internal geographic knowledge to determine if a specific city falls under a broader allowed
+    state or region.
 11. Excluded Locations: Reject any role (is_eligible: False) if ANY of the job's listed locations
     geographically match or fall within the Candidate's Excluded Locations.
-12. Degree Matching: If the post explicitly requires specific degrees (e.g., "B.Tech", "M.Tech", "MCA") and the candidate's degree is not listed, you MUST reject it (is_eligible: False) unless the post explicitly accepts "equivalent" degrees.
+12. Degree Matching: If the post explicitly requires specific degrees (e.g., "B.Tech", "M.Tech",
+    "MCA") and the candidate's degree is not listed, you MUST reject it (is_eligible: False) unless
+    the post explicitly accepts "equivalent" degrees.
 
 Candidate Constraints:
 Allowed Locations: {locations}
@@ -322,7 +326,7 @@ class LLMClient:
         logger.info("LLM extracted email in %.2fs: %s", duration, result)
         return result
 
-    async def _call_api(self, payload: dict) -> str:
+    async def _call_api(self, payload: dict[str, Any]) -> str:
         """
         Make a POST request to the OpenRouter chat completions endpoint.
 
@@ -360,7 +364,7 @@ class LLMClient:
 
         try:
             data = response.json()
-            content = data["choices"][0]["message"]["content"]
+            content: str = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, json.JSONDecodeError) as e:
             logger.error("Failed to extract content from LLM response: %s", e)
             raise LLMError(f"Unexpected LLM response structure: {e}") from e

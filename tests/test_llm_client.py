@@ -67,10 +67,15 @@ class TestLLMClient:
             ]
         }
 
-        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post:
+        # draft_email retries 3 times with a 1s pause; fake the pause.
+        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post, \
+             patch("server.services.llm_client.asyncio.sleep", new_callable=AsyncMock):
             mock_post.return_value = mock_response
-            with pytest.raises(LLMError, match="Invalid JSON from LLM"):
+            with pytest.raises(
+                LLMError, match="LLM response failed validation: Expecting value"
+            ):
                 await llm_client.draft_email("post text")
+        assert mock_post.await_count == 3
 
     @pytest.mark.asyncio
     async def test_draft_email_api_error(self, llm_client):
@@ -110,10 +115,13 @@ class TestLLMClient:
             ]
         }
 
-        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post:
+        # draft_email retries 3 times with a 1s pause; fake the pause.
+        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post, \
+             patch("server.services.llm_client.asyncio.sleep", new_callable=AsyncMock):
             mock_post.return_value = mock_response
             with pytest.raises(LLMError, match="LLM response failed validation"):
                 await llm_client.draft_email("post text")
+        assert mock_post.await_count == 3
 
     @pytest.mark.asyncio
     async def test_extract_email_success(self, llm_client):
