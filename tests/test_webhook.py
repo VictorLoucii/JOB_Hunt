@@ -13,7 +13,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.config import UserConstraints
-from server.dependencies import get_db, get_gmail_client, get_llm_client, get_settings
+from server.dependencies import (
+    get_db,
+    get_gmail_client,
+    get_llm_client,
+    get_settings,
+    get_user_profile,
+)
 from server.main import app
 from server.models import DraftStatus, EligibilityResult, EmailDraft
 from server.services.db import Database
@@ -36,6 +42,7 @@ def client(mock_db, mock_settings, mock_user_profile, tmp_path):
     app.dependency_overrides[get_settings] = lambda: mock_settings
     app.dependency_overrides[get_llm_client] = lambda: mock_llm
     app.dependency_overrides[get_gmail_client] = lambda: mock_gmail
+    app.dependency_overrides[get_user_profile] = lambda: mock_user_profile
 
     # Default eligibility mock
     mock_llm.evaluate_eligibility = AsyncMock(return_value=EligibilityResult(
@@ -49,7 +56,6 @@ def client(mock_db, mock_settings, mock_user_profile, tmp_path):
     # TestClient runs the real lifespan, so fake every client it builds.
     with patch("server.main.get_settings", return_value=mock_settings), \
          patch("server.main.get_user_profile", return_value=mock_user_profile), \
-         patch("server.routers.webhook.get_user_profile", return_value=mock_user_profile), \
          patch("server.main.Database", return_value=mock_db), \
          patch("server.main.GmailClient", return_value=mock_gmail), \
          patch("server.main.LLMClient", return_value=mock_llm), \
@@ -154,4 +160,18 @@ def test_webhook_ineligible_pipeline_skips(mock_display_rejection, client):
     mock_display_rejection.assert_called_once()
 
 
-
+def test_webhook_invalid_config_returns_500(client):
+    c, _, _, _ = client
+    # Use the real get_user_profile dependency, with a config.yaml that fails validation.
+    app.dependency_overrides.pop(get_user_profile)
+    with patch(
+        "server.dependencies.load_user_profile",
+        side_effect=ValueError("Invalid config.yaml: llm.temperature: bad"),
+    ):
+        response = c.post("/webhook", json={
+            "selected_text": "Some text",
+            "page_url": "https://www.linkedin.com/posts/123",
+            "content_hash": "hash500",
+        })
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Invalid config.yaml; see server log"}

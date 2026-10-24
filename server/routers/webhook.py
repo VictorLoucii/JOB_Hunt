@@ -15,8 +15,14 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from server.config import Settings, get_user_profile
-from server.dependencies import get_db, get_gmail_client, get_llm_client, get_settings
+from server.config import Settings, UserProfile
+from server.dependencies import (
+    get_db,
+    get_gmail_client,
+    get_llm_client,
+    get_settings,
+    get_user_profile,
+)
 from server.models import DraftResult, DraftStatus, WebhookPayload
 from server.services.db import Database
 from server.services.email_extractor import extract_email
@@ -38,6 +44,7 @@ async def handle_webhook(
     gmail_client: GmailClient = Depends(get_gmail_client),  # noqa: B008
     db: Database = Depends(get_db),  # noqa: B008
     settings: Settings = Depends(get_settings),  # noqa: B008
+    user_profile: UserProfile = Depends(get_user_profile),  # noqa: B008
 ) -> JSONResponse:
     """
     Handle incoming LinkedIn post from the browser.
@@ -57,7 +64,6 @@ async def handle_webhook(
         )
 
     # 1.5. Eligibility Screening
-    user_profile = get_user_profile()
     try:
         eligibility = await llm_client.evaluate_eligibility(
             post_text=payload.selected_text,

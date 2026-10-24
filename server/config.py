@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,26 @@ class Settings(BaseSettings):
         return v
 
 
-class UserConstraints(BaseModel):
+class _ConfigSection(BaseModel):
+    """
+    Base for config.yaml sections.
+
+    Numbers in text fields become text (``graduation: 2026``), keys with an
+    empty value use the field default, and unknown keys are ignored.
+    """
+
+    model_config = ConfigDict(coerce_numbers_to_str=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def drop_empty_values(cls, data: Any) -> Any:
+        """Drop keys whose YAML value is empty (None) so the default applies."""
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if v is not None}
+        return data
+
+
+class UserConstraints(_ConfigSection):
     """User's hard constraints for job applications."""
     allowed_locations: list[str] = Field(default_factory=list)
     excluded_locations: list[str] = Field(default_factory=list)
@@ -87,6 +106,46 @@ class UserConstraints(BaseModel):
     grad_date: str = Field(default="")
     degree: str = Field(default="")
     excluded_role_types: list[str] = Field(default_factory=list)
+
+
+class UserSection(_ConfigSection):
+    """The ``user:`` section of config.yaml."""
+
+    name: str = ""
+    university: str = ""
+    major: str = ""
+    graduation: str = ""
+    skills: list[str] = Field(default_factory=list)
+    linkedin: str = ""
+    portfolio: str = ""
+    project_link: str = ""
+    github: str = ""
+    tone: str = "professional"
+    constraints: UserConstraints = Field(default_factory=UserConstraints)
+
+
+class LLMSection(_ConfigSection):
+    """The ``llm:`` section of config.yaml."""
+
+    model: str = "deepseek/deepseek-chat"
+    fallback_models: list[str] = Field(default_factory=list)
+    temperature: float = 0.7
+    max_tokens: int = 1024
+    prompt_version: str = "email_draft.txt"
+
+
+class ResumeSection(_ConfigSection):
+    """The ``resume:`` section of config.yaml."""
+
+    dir: str = ""
+
+
+class ConfigFile(_ConfigSection):
+    """The whole of config.yaml. Other top-level keys (e.g. ``targets``) are ignored."""
+
+    user: UserSection = Field(default_factory=UserSection)
+    llm: LLMSection = Field(default_factory=LLMSection)
+    resume: ResumeSection = Field(default_factory=ResumeSection)
 
 
 class UserProfile:
@@ -99,6 +158,7 @@ class UserProfile:
     def __init__(self, config_path: Path | None = None) -> None:
         self._config_path = config_path or (PROJECT_ROOT / "config.yaml")
         self._data: dict[str, Any] = {}
+        self._config = ConfigFile()
         self._load()
 
     def _load(self) -> None:
@@ -111,76 +171,87 @@ class UserProfile:
         with open(self._config_path, encoding="utf-8") as f:
             self._data = yaml.safe_load(f) or {}
 
+        try:
+            self._config = ConfigFile.model_validate(self._data)
+        except ValidationError as e:
+            # Name the field and the problem only: input values can hold personal data,
+            # so the message leaves them out and "from None" drops pydantic's own text.
+            problems = "; ".join(
+                f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
+                for err in e.errors()
+            )
+            logger.error("config.yaml at %s failed validation: %s", self._config_path, problems)
+            raise ValueError(f"Invalid config.yaml: {problems}") from None
+
         logger.info("Loaded user profile from %s", self._config_path)
 
     @property
     def name(self) -> str:
-        return cast(str, self._data.get("user", {}).get("name", ""))
+        return self._config.user.name
 
     @property
     def university(self) -> str:
-        return cast(str, self._data.get("user", {}).get("university", ""))
+        return self._config.user.university
 
     @property
     def major(self) -> str:
-        return cast(str, self._data.get("user", {}).get("major", ""))
+        return self._config.user.major
 
     @property
     def graduation(self) -> str:
-        return cast(str, self._data.get("user", {}).get("graduation", ""))
+        return self._config.user.graduation
 
     @property
     def skills(self) -> list[str]:
-        return cast(list[str], self._data.get("user", {}).get("skills", []))
+        return self._config.user.skills
 
     @property
     def linkedin(self) -> str:
-        return cast(str, self._data.get("user", {}).get("linkedin", ""))
+        return self._config.user.linkedin
 
     @property
     def portfolio(self) -> str:
-        return cast(str, self._data.get("user", {}).get("portfolio", ""))
+        return self._config.user.portfolio
 
     @property
     def project_link(self) -> str:
-        return cast(str, self._data.get("user", {}).get("project_link", ""))
+        return self._config.user.project_link
 
     @property
     def github(self) -> str:
-        return cast(str, self._data.get("user", {}).get("github", ""))
+        return self._config.user.github
 
     @property
     def llm_model(self) -> str:
-        return cast(str, self._data.get("llm", {}).get("model", "deepseek/deepseek-chat"))
+        return self._config.llm.model
 
     @property
     def llm_fallback_models(self) -> list[str]:
-        return cast(list[str], self._data.get("llm", {}).get("fallback_models", []))
+        return self._config.llm.fallback_models
 
     @property
     def llm_temperature(self) -> float:
-        return cast(float, self._data.get("llm", {}).get("temperature", 0.7))
+        return self._config.llm.temperature
 
     @property
     def llm_max_tokens(self) -> int:
-        return cast(int, self._data.get("llm", {}).get("max_tokens", 1024))
+        return self._config.llm.max_tokens
 
     @property
     def constraints(self) -> UserConstraints:
-        constraints_data = self._data.get("user", {}).get("constraints", {})
-        return UserConstraints(**constraints_data)
+        return self._config.user.constraints
 
     @property
     def tone(self) -> str:
-        return str(self._data.get("user", {}).get("tone", "professional"))
+        return self._config.user.tone
 
     @property
     def prompt_version(self) -> str:
-        return str(self._data.get("llm", {}).get("prompt_version", "email_draft.txt"))
+        return self._config.llm.prompt_version
 
     @property
     def resume_dir(self) -> Path | None:
-        dir_str = self._data.get("resume", {}).get("dir", "")
+        dir_str = self._config.resume.dir
         if dir_str:
             return Path(dir_str).expanduser()
         return None

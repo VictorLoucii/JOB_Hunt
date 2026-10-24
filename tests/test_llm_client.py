@@ -12,7 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from server.models import EmailDraft
+from server.config import UserConstraints
+from server.models import EligibilityResult, EmailDraft
 from server.services.llm_client import LLMClient, LLMError
 
 
@@ -169,3 +170,74 @@ class TestLLMClient:
         with patch.object(llm_client._client, 'aclose', new_callable=AsyncMock) as mock_aclose:
             await llm_client.close()
             mock_aclose.assert_called_once()
+
+
+def _llm_response(content: str) -> MagicMock:
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"choices": [{"message": {"content": content}}]}
+    return response
+
+
+ELIGIBLE_JSON = json.dumps({
+    "hard_requirements_found": ["Based in Delhi"],
+    "soft_requirements_found": [],
+    "candidate_matches_hard_requirements": True,
+    "reasoning": "Location matches",
+    "is_eligible": True,
+})
+
+CONSTRAINTS = UserConstraints(
+    allowed_locations=["Delhi", "Remote"],
+    max_experience_required_years=1,
+    grad_date="June 2026",
+    degree="B.Tech",
+    excluded_role_types=["Sales"],
+)
+
+
+class TestEvaluateEligibility:
+    """Tests for LLMClient.evaluate_eligibility."""
+
+    @pytest.mark.asyncio
+    async def test_eligible_result_and_prompt(self, llm_client):
+        """Valid JSON → EligibilityResult; the prompt carries the constraints."""
+        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = _llm_response(ELIGIBLE_JSON)
+            result = await llm_client.evaluate_eligibility("Hiring in Delhi", CONSTRAINTS)
+
+        assert isinstance(result, EligibilityResult)
+        assert result.is_eligible is True
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["temperature"] == 0.0
+        prompt = payload["messages"][0]["content"]
+        assert "Allowed Locations: Delhi, Remote" in prompt
+        assert "Excluded Locations: None" in prompt
+        assert "Excluded Role Types: Sales" in prompt
+        assert "Hiring in Delhi" in prompt
+
+    @pytest.mark.asyncio
+    async def test_invalid_json_raises_after_three_attempts(self, llm_client):
+        """Invalid JSON on every attempt → LLMError after 3 calls."""
+        # evaluate_eligibility retries 3 times with a 1s pause; fake the pause.
+        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post, \
+             patch("server.services.llm_client.asyncio.sleep", new_callable=AsyncMock):
+            mock_post.return_value = _llm_response("not-valid-json")
+            with pytest.raises(
+                LLMError, match="LLM response failed validation: Expecting value"
+            ):
+                await llm_client.evaluate_eligibility("post text", CONSTRAINTS)
+        assert mock_post.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_recovers_on_second_attempt(self, llm_client):
+        """Invalid JSON once, then valid JSON → result from the second call."""
+        with patch.object(llm_client._client, 'post', new_callable=AsyncMock) as mock_post, \
+             patch("server.services.llm_client.asyncio.sleep", new_callable=AsyncMock):
+            mock_post.side_effect = [
+                _llm_response("not-valid-json"),
+                _llm_response(ELIGIBLE_JSON),
+            ]
+            result = await llm_client.evaluate_eligibility("post text", CONSTRAINTS)
+        assert result.is_eligible is True
+        assert mock_post.await_count == 2

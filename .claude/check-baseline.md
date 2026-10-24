@@ -5,7 +5,7 @@ Update this file only in the change that moves a number, and say why.
 
 | Check | Result |
 |---|---|
-| `.venv/bin/pytest` | 79 passed |
+| `.venv/bin/pytest` | 91 passed |
 | `.venv/bin/ruff check .` | 0 errors |
 | `.venv/bin/mypy server` | 0 errors |
 
@@ -24,3 +24,6 @@ Known causes:
   `types-PyYAML` in the `dev` extras).
 - Added: `test_create_draft_build_error`; `build()` in `create_draft` now sits inside
   the `try`, so its failure raises `GmailError`.
+- Added: 3 `evaluate_eligibility` tests, 8 config tests (`tests/test_config.py`) and
+  `test_webhook_invalid_config_returns_500`; `config.yaml` is now validated by the
+  `ConfigFile` Pydantic model.
